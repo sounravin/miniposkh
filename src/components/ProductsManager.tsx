@@ -22,6 +22,7 @@ import { Product } from '../types';
 import { INITIAL_CATEGORIES } from '../data/initialData';
 import { formatUSD, formatKHR } from '../utils/currency';
 import { BarcodeLabelModal } from './BarcodeLabelModal';
+import { BarcodeAutoCaptureModal } from './BarcodeAutoCaptureModal';
 import { resizeImageFile } from '../lib/imageUtils';
 
 interface ProductsManagerProps {
@@ -45,6 +46,7 @@ export const ProductsManager: React.FC<ProductsManagerProps> = ({
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isBarcodeCaptureOpen, setIsBarcodeCaptureOpen] = useState(false);
   const [barcodeLabelProduct, setBarcodeLabelProduct] = useState<Product | null>(null);
   const [restockProduct, setRestockProduct] = useState<Product | null>(null);
   const [restockAmount, setRestockAmount] = useState<string>('10');
@@ -440,22 +442,43 @@ export const ProductsManager: React.FC<ProductsManagerProps> = ({
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="text-xs font-semibold text-slate-700">Barcode / SKU *</label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setIsBarcodeCaptureOpen(true)}
+                        className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-2 py-0.5 rounded-md flex items-center gap-1 transition-colors cursor-pointer border border-indigo-200/60"
+                        title={isKh ? "ស្កេនចាប់បាកូដដោយកាមេរ៉ា iPhone/Android" : "Scan barcode with Camera / Macro Lens"}
+                      >
+                        <Camera className="w-3 h-3 text-indigo-600" />
+                        <span>{isKh ? 'ស្កេនបាកូដ' : 'Scan Camera'}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, barcode: generateRandomBarcode() })}
+                        className="text-[10px] text-slate-500 hover:text-slate-700 hover:underline cursor-pointer"
+                      >
+                        {isKh ? 'បង្កើតស្វ័យប្រវត្ត' : 'Auto'}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      required
+                      value={formData.barcode || ''}
+                      onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+                      placeholder="e.g. 885100000099"
+                      className="w-full text-xs font-mono font-bold p-2.5 pr-10 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
                     <button
                       type="button"
-                      onClick={() => setFormData({ ...formData, barcode: generateRandomBarcode() })}
-                      className="text-[10px] text-indigo-600 hover:underline cursor-pointer"
+                      onClick={() => setIsBarcodeCaptureOpen(true)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
+                      title={isKh ? "ស្កេនចាប់បាកូដដោយកាមេរ៉ា" : "Scan Barcode with Camera"}
                     >
-                      Auto-Generate
+                      <Barcode className="w-4 h-4" />
                     </button>
                   </div>
-                  <input
-                    type="text"
-                    required
-                    value={formData.barcode || ''}
-                    onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
-                    placeholder="e.g. 885100000099"
-                    className="w-full text-xs font-mono font-bold p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
                 </div>
               </div>
 
@@ -687,6 +710,19 @@ export const ProductsManager: React.FC<ProductsManagerProps> = ({
           product={barcodeLabelProduct}
           onClose={() => setBarcodeLabelProduct(null)}
           language={language}
+        />
+      )}
+
+      {/* Auto Barcode Scanner Modal with Macro Lens Support */}
+      {isBarcodeCaptureOpen && (
+        <BarcodeAutoCaptureModal
+          isOpen={isBarcodeCaptureOpen}
+          onClose={() => setIsBarcodeCaptureOpen(false)}
+          onBarcodeCaptured={(code) => {
+            setFormData(prev => ({ ...prev, barcode: code }));
+          }}
+          language={language}
+          initialBarcode={formData.barcode}
         />
       )}
     </div>

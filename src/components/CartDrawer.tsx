@@ -11,7 +11,8 @@ import {
   MessageSquare,
   User,
   ShoppingBag,
-  RotateCcw
+  RotateCcw,
+  Barcode
 } from 'lucide-react';
 import { CartItem, TableInfo } from '../types';
 import { formatUSD, formatKHR } from '../utils/currency';
@@ -41,6 +42,7 @@ interface CartDrawerProps {
   isMobileOpen?: boolean;
   onCloseMobile?: () => void;
   onOpenMobile?: () => void;
+  openBarcodeScanner?: () => void;
 }
 
 export const CartDrawer: React.FC<CartDrawerProps> = ({
@@ -66,7 +68,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   khrRate,
   isMobileOpen = false,
   onCloseMobile,
-  onOpenMobile
+  onOpenMobile,
+  openBarcodeScanner
 }) => {
   const [showOptionsDropdown, setShowOptionsDropdown] = useState(false);
   const [showDiscountModal, setShowDiscountModal] = useState(false);
@@ -118,7 +121,18 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            {/* Quick Barcode Scanner Button in Cart Header */}
+            {openBarcodeScanner && (
+              <button
+                onClick={openBarcodeScanner}
+                title={isKh ? "ស្កេនបាកូដបញ្ចូលកន្ត្រក" : "Scan Barcode"}
+                className="p-1.5 rounded-xl bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-100 transition-colors cursor-pointer"
+              >
+                <Barcode className="w-4 h-4" />
+              </button>
+            )}
+
             {/* Table Selector pill badge */}
             <div className="relative">
               <select

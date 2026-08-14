@@ -217,27 +217,8 @@ export const PosView: React.FC<PosViewProps> = ({
         </div>
       </div>
 
-      {/* Sub-search bar & Categories dropdown */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 mb-4 sm:mb-5 w-full max-w-full">
-        <div className="relative flex-1 min-w-0">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            id="pos-menu-search-input"
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={isKh ? "ស្វែងរកទំនិញ, Skin Care, ស្រា..." : "Search products, drinks, food..."}
-            className="w-full bg-white text-xs sm:text-sm text-slate-800 placeholder-slate-400 rounded-xl pl-9 pr-10 py-2 sm:py-2.5 border border-slate-100/90 shadow-2xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-          />
-          <button
-            onClick={openBarcodeScanner}
-            title="Scan Barcode"
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
-          >
-            <Barcode className="w-4 h-4" />
-          </button>
-        </div>
-
+      {/* Category selector dropdown & category filters */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-3 mb-4 sm:mb-5 w-full max-w-full">
         {/* Category selector dropdown */}
         <div className="relative shrink-0 w-full sm:w-auto">
           <select
@@ -247,15 +228,28 @@ export const PosView: React.FC<PosViewProps> = ({
               setDropdownCategory(e.target.value);
               setSelectedCategory('All Items');
             }}
-            className="w-full sm:w-auto appearance-none bg-white text-xs sm:text-sm font-medium text-slate-700 pl-3.5 pr-8 py-2 sm:py-2.5 rounded-xl border border-slate-100/90 shadow-2xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer"
+            className="w-full sm:w-auto appearance-none bg-white text-xs sm:text-sm font-semibold text-slate-700 pl-3.5 pr-8 py-2 sm:py-2.5 rounded-xl border border-slate-100/90 shadow-2xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer"
           >
-            <option value="All">{isKh ? 'គ្រប់ប្រភេទទាំងអស់' : 'All Categories'}</option>
+            <option value="All">{isKh ? '🏷️ គ្រប់ប្រភេទទាំងអស់' : '🏷️ All Categories'}</option>
             {INITIAL_CATEGORIES.filter(c => c !== 'All Items' && c !== 'Popular').map(c => (
               <option key={c} value={c}>{c} ({getCategoryLabel(c)})</option>
             ))}
           </select>
           <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
         </div>
+
+        {/* Search query tag indicator if active from global header */}
+        {searchQuery && (
+          <div className="flex items-center gap-2 text-xs bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-xl border border-indigo-100 font-medium">
+            <span>{isKh ? `កំពុងស្វែងរក៖ "${searchQuery}"` : `Filtering: "${searchQuery}"`}</span>
+            <button
+              onClick={() => setSearchQuery('')}
+              className="text-indigo-400 hover:text-indigo-800 font-bold ml-1 cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Product Grid */}

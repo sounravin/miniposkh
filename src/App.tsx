@@ -628,6 +628,7 @@ export default function App() {
                   isMobileOpen={isMobileCartOpen}
                   onCloseMobile={() => setIsMobileCartOpen(false)}
                   onOpenMobile={() => setIsMobileCartOpen(true)}
+                  openBarcodeScanner={() => setIsBarcodeScannerOpen(true)}
                 />
               </div>
             </div>
@@ -725,6 +726,7 @@ export default function App() {
         products={userProducts}
         onScanSuccess={handleBarcodeScanSuccess}
         language={language}
+        onOpenCartMobile={() => setIsMobileCartOpen(true)}
       />
 
       {/* Checkout / Payment Modal */}
