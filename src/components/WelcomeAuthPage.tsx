@@ -23,6 +23,7 @@ import {
 import { User } from '../types';
 import { Logo } from './Logo';
 import { saveUserToFirestore, logUserActivity, DEFAULT_USERS } from '../lib/firestoreService';
+import { resizeImageFile } from '../lib/imageUtils';
 
 const AUTH_PRESET_AVATARS = [
   'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',
@@ -405,16 +406,21 @@ export const WelcomeAuthPage: React.FC<WelcomeAuthPageProps> = ({
                       <input
                         type="file"
                         ref={regFileInputRef}
-                        onChange={(e) => {
+                        onChange={async (e) => {
                           const file = e.target.files?.[0];
                           if (file) {
-                            const reader = new FileReader();
-                            reader.onload = (evt) => {
-                              if (typeof evt.target?.result === 'string') {
-                                setRegAvatar(evt.target.result);
-                              }
-                            };
-                            reader.readAsDataURL(file);
+                            try {
+                              const result = await resizeImageFile(file, 400, 400, 0.85);
+                              setRegAvatar(result.dataUrl);
+                            } catch {
+                              const reader = new FileReader();
+                              reader.onload = (evt) => {
+                                if (typeof evt.target?.result === 'string') {
+                                  setRegAvatar(evt.target.result);
+                                }
+                              };
+                              reader.readAsDataURL(file);
+                            }
                           }
                         }}
                         accept="image/*"

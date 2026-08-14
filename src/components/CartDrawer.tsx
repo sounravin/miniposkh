@@ -361,7 +361,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
       {/* 2. MOBILE FLOATING QUICK-BAR (Visible ONLY on mobile when cart has items and pop-up is closed) */}
       {!isMobileOpen && cartItems.length > 0 && (
-        <div className="xl:hidden fixed bottom-4 left-4 right-4 z-30 animate-in slide-in-from-bottom-4 duration-200">
+        <div className="xl:hidden fixed bottom-safe left-3.5 right-3.5 sm:left-4 sm:right-4 z-30 animate-in slide-in-from-bottom-4 duration-200">
           <div 
             onClick={onOpenMobile}
             className="bg-indigo-600 hover:bg-indigo-700 text-white p-3 sm:p-3.5 rounded-2xl shadow-xl shadow-indigo-600/30 flex items-center justify-between cursor-pointer border border-indigo-400/40 active:scale-[0.99] transition-all"
@@ -580,7 +580,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             )}
 
             {/* Total Breakdown and Checkout Actions */}
-            <div className="p-4 border-t border-slate-100 bg-white space-y-3">
+            <div className="p-4 pb-safe border-t border-slate-100 bg-white space-y-3">
               <div className="flex justify-between items-center text-xs text-slate-500 pb-1">
                 <span>{isKh ? 'សរុបរង (Subtotal)' : 'Subtotal'}: <strong className="text-slate-700">${subtotal.toFixed(2)}</strong></span>
                 {computedDiscount > 0 && (

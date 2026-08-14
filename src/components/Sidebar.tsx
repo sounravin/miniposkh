@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { ActiveView, User } from '../types';
 import { Logo } from './Logo';
-import { LogOut } from 'lucide-react';
+import { LogOut, X } from 'lucide-react';
 
 interface SidebarProps {
   activeView: ActiveView;
@@ -27,6 +27,7 @@ interface SidebarProps {
   currentUser?: User | null;
   onLogout?: () => void;
   onOpenProfileModal?: () => void;
+  onCloseMobile?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -38,7 +39,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   language,
   currentUser,
   onLogout,
-  onOpenProfileModal
+  onOpenProfileModal,
+  onCloseMobile
 }) => {
   const isKh = language === 'kh';
 
@@ -94,20 +96,30 @@ export const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   return (
-    <aside className="w-64 bg-white border-r border-slate-100 flex flex-col justify-between shrink-0 h-screen sticky top-0 z-30 select-none">
+    <aside className="w-72 md:w-64 bg-white border-r border-slate-100 flex flex-col justify-between shrink-0 h-screen sticky top-0 z-30 select-none pt-safe pb-safe overflow-y-auto touch-scroll">
       {/* Brand Header */}
       <div>
-        <div className="p-4 sm:p-5 flex items-center gap-3 border-b border-slate-100/80 bg-slate-50/40">
-          <Logo size={46} variant="badge" />
-          <div className="min-w-0">
-            <h1 className="font-extrabold text-base text-slate-800 tracking-tight flex items-center gap-1.5 leading-tight truncate">
-              MINI-POS-KH
-              <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
-            </h1>
-            <p className="text-[11px] text-slate-400 font-medium tracking-wide truncate">
-              {isKh ? 'ប្រព័ន្ធគ្រប់គ្រងការលក់' : 'Retail POS System'}
-            </p>
+        <div className="p-4 sm:p-5 flex items-center justify-between border-b border-slate-100/80 bg-slate-50/40">
+          <div className="flex items-center gap-3 min-w-0">
+            <Logo size={42} variant="badge" />
+            <div className="min-w-0">
+              <h1 className="font-extrabold text-base text-slate-800 tracking-tight flex items-center gap-1.5 leading-tight truncate">
+                MINI-POS-KH
+                <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+              </h1>
+              <p className="text-[11px] text-slate-400 font-medium tracking-wide truncate">
+                {isKh ? 'ប្រព័ន្ធគ្រប់គ្រងការលក់' : 'Retail POS System'}
+              </p>
+            </div>
           </div>
+          {onCloseMobile && (
+            <button
+              onClick={onCloseMobile}
+              className="p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 md:hidden cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
         </div>
 
         {/* Barcode Quick Scanner CTA Button */}

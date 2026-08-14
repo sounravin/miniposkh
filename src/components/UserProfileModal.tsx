@@ -11,13 +11,15 @@ import {
   ShieldCheck, 
   Sparkles, 
   Trash2, 
-  Image as ImageIcon,
-  Eye,
-  EyeOff,
-  AlertCircle
+  Eye, 
+  EyeOff, 
+  AlertCircle,
+  Loader2,
+  Image as ImageIcon
 } from 'lucide-react';
 import { User } from '../types';
 import { saveUserToFirestore, logUserActivity } from '../lib/firestoreService';
+import { resizeImageFile } from '../lib/imageUtils';
 
 interface UserProfileModalProps {
   isOpen: boolean;
@@ -29,14 +31,14 @@ interface UserProfileModalProps {
 }
 
 const PRESET_AVATARS = [
-  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-  'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80',
-  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
-  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&q=80',
-  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
-  'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=200&q=80',
-  'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=200&q=80',
-  'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80',
+  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+  'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80',
+  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80',
+  'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=300&q=80',
+  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80',
+  'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=300&q=80',
+  'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=300&q=80',
+  'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=300&q=80',
 ];
 
 export const UserProfileModal: React.FC<UserProfileModalProps> = ({
@@ -49,6 +51,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 }) => {
   const isKh = language === 'kh';
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const [fullName, setFullName] = useState(currentUser.fullName || '');
   const [phone, setPhone] = useState(currentUser.phone || '');
@@ -57,14 +60,15 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   const [newPassword, setNewPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isProcessingPhoto, setIsProcessingPhoto] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
 
   if (!isOpen) return null;
 
-  // Handle local file upload with base64 conversion
-  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  // Process selected image file with auto-resizing & compression
+  const processImageFile = async (file: File) => {
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
@@ -72,19 +76,46 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
       return;
     }
 
-    if (file.size > 3 * 1024 * 1024) {
-      setErrorMessage(isKh ? 'ទំហំរូបភាពមិនគួរលើសពី 3MB ឡើយ!' : 'Image file size should not exceed 3MB.');
-      return;
-    }
-
     setErrorMessage('');
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (typeof event.target?.result === 'string') {
-        setAvatar(event.target.result);
+    setIsProcessingPhoto(true);
+
+    try {
+      // Downscale to 400x400 max, 0.85 quality (~30KB-50KB), perfectly suited for Firestore and fast cloud sync
+      const result = await resizeImageFile(file, 400, 400, 0.85);
+      setAvatar(result.dataUrl);
+    } catch (err: any) {
+      console.error('Photo resize error:', err);
+      // Fallback: Use standard FileReader if canvas processing fails
+      try {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          if (typeof e.target?.result === 'string') {
+            setAvatar(e.target.result);
+          }
+        };
+        reader.readAsDataURL(file);
+      } catch (fallbackErr) {
+        setErrorMessage(isKh ? 'បរាជ័យក្នុងការ Upload រូបភាព សូមសាកល្បងម្ដងទៀត!' : 'Failed to process photo. Please try again.');
       }
-    };
-    reader.readAsDataURL(file);
+    } finally {
+      setIsProcessingPhoto(false);
+    }
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processImageFile(file);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      processImageFile(file);
+    }
   };
 
   // Handle Save
@@ -109,7 +140,10 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
         password: newPassword.trim() ? newPassword.trim() : currentUser.password,
       };
 
+      // 1. Save to Cloud Firestore
       await saveUserToFirestore(updatedUser);
+
+      // 2. Log activity
       await logUserActivity(
         currentUser.id,
         currentUser.username,
@@ -118,18 +152,20 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
         `${currentUser.username} updated their profile info and photo`
       );
 
+      // 3. Update application state & localStorage
       if (onUpdateUser) {
         onUpdateUser(updatedUser);
       }
       if (onUserUpdated) {
         onUserUpdated(updatedUser);
       }
+      
       setSuccessMessage(isKh ? 'បានកែប្រែព័ត៌មាន Profile ជោគជ័យ!' : 'Profile updated successfully!');
       
       setTimeout(() => {
         setSuccessMessage('');
         onClose();
-      }, 1000);
+      }, 700);
     } catch (err: any) {
       console.error('Update profile error:', err);
       setErrorMessage(err.message || 'Failed to update profile');
@@ -139,8 +175,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-5 border border-slate-100 my-8">
+    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200">
+      <div className="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-4 sm:space-y-5 border border-slate-100 my-auto pb-safe">
         {/* Modal Header */}
         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
           <div className="flex items-center gap-2.5">
@@ -148,15 +184,16 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               <UserIcon className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-extrabold text-base text-slate-900">
+              <h3 className="font-extrabold text-base text-slate-900 leading-tight">
                 {isKh ? 'កែសម្រួលព័ត៌មានគណនី (Member Profile)' : 'Edit Member Profile'}
               </h3>
               <p className="text-xs text-slate-400 font-mono">@{currentUser.username}</p>
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+            className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -164,14 +201,14 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
         {/* Feedback Messages */}
         {errorMessage && (
-          <div className="p-3 bg-rose-50 text-rose-700 border border-rose-200 rounded-xl text-xs flex items-center gap-2">
+          <div className="p-3 bg-rose-50 text-rose-700 border border-rose-200 rounded-xl text-xs flex items-center gap-2 animate-in fade-in">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{errorMessage}</span>
           </div>
         )}
 
         {successMessage && (
-          <div className="p-3 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs flex items-center gap-2">
+          <div className="p-3 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs flex items-center gap-2 animate-in fade-in">
             <Check className="w-4 h-4 shrink-0" />
             <span>{successMessage}</span>
           </div>
@@ -179,23 +216,39 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
 
         <form onSubmit={handleSaveProfile} className="space-y-4">
           {/* Avatar Upload Section */}
-          <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200/80 space-y-3">
-            <label className="block text-xs font-extrabold text-slate-700">
-              {isKh ? 'រូបភាពផ្ទាល់ខ្លួន (Profile Photo / Avatar)' : 'Profile Photo & Avatar'}
-            </label>
+          <div 
+            onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={handleDrop}
+            className={`p-4 rounded-2xl border transition-all space-y-3 ${
+              isDragging ? 'bg-indigo-50/70 border-indigo-300 ring-2 ring-indigo-500/20' : 'bg-slate-50/80 border-slate-200/80'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-extrabold text-slate-700">
+                {isKh ? 'រូបភាពផ្ទាល់ខ្លួន (Profile Photo / Avatar)' : 'Profile Photo & Avatar'}
+              </label>
+              {isProcessingPhoto && (
+                <span className="text-[11px] font-bold text-indigo-600 flex items-center gap-1">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  {isKh ? 'កំពុងបង្រួមរូបភាព...' : 'Optimizing photo...'}
+                </span>
+              )}
+            </div>
             
             <div className="flex flex-col sm:flex-row items-center gap-4">
               {/* Preview with Overlaid Upload Trigger */}
-              <div className="relative group">
+              <div className="relative group shrink-0">
                 <img
-                  src={avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'}
+                  src={avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80'}
                   alt={fullName}
-                  className="w-20 h-20 rounded-2xl object-cover ring-4 ring-white shadow-md group-hover:opacity-90 transition-opacity"
+                  className="w-20 h-20 sm:w-22 sm:h-22 rounded-2xl object-cover ring-4 ring-white shadow-md group-hover:opacity-90 transition-opacity bg-slate-200"
                 />
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 text-white rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-[10px] font-bold gap-1"
+                  disabled={isProcessingPhoto}
+                  className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 text-white rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-[10px] font-bold gap-1"
                 >
                   <Camera className="w-5 h-5" />
                   <span>{isKh ? 'ប្តូររូប' : 'Change'}</span>
@@ -203,28 +256,52 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               </div>
 
               {/* Upload Buttons */}
-              <div className="flex-1 space-y-2 text-center sm:text-left">
+              <div className="flex-1 space-y-2 text-center sm:text-left w-full">
+                {/* Hidden File & Camera Inputs */}
                 <input
                   type="file"
                   ref={fileInputRef}
-                  onChange={handleImageFileChange}
+                  onChange={handleFileInputChange}
                   accept="image/*"
                   className="hidden"
                 />
+                <input
+                  type="file"
+                  ref={cameraInputRef}
+                  onChange={handleFileInputChange}
+                  accept="image/*"
+                  capture="user"
+                  className="hidden"
+                />
+
                 <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
+                  {/* Snap Photo with Camera */}
+                  <button
+                    type="button"
+                    onClick={() => cameraInputRef.current?.click()}
+                    disabled={isProcessingPhoto}
+                    className="px-3 py-2 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+                  >
+                    <Camera className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>{isKh ? 'ថតរូប (Camera)' : 'Snap Photo'}</span>
+                  </button>
+
+                  {/* Upload from Phone / Computer */}
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                    disabled={isProcessingPhoto}
+                    className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer active:scale-95 disabled:opacity-50"
                   >
                     <Upload className="w-3.5 h-3.5" />
-                    <span>{isKh ? 'Upload រូបភាពផ្ទាល់ខ្លួន' : 'Upload From Computer'}</span>
+                    <span>{isKh ? 'ជ្រើសរូបពីទូរស័ព្ទ / ឯកសារ' : 'Upload Photo'}</span>
                   </button>
+
                   {avatar && (
                     <button
                       type="button"
                       onClick={() => setAvatar('')}
-                      className="px-2.5 py-1.5 bg-slate-200 hover:bg-rose-100 hover:text-rose-700 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1 transition-all cursor-pointer"
+                      className="px-2.5 py-2 bg-slate-200 hover:bg-rose-100 hover:text-rose-700 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1 transition-all cursor-pointer"
                       title={isKh ? 'លុបរូបភាព' : 'Reset avatar'}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -232,7 +309,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   )}
                 </div>
                 <p className="text-[11px] text-slate-400">
-                  {isKh ? 'គាំទ្ររូបភាព PNG, JPG, WebP ដល់ 3MB' : 'Supports PNG, JPG, WebP up to 3MB'}
+                  {isKh ? 'គាំទ្ររូបភាព PNG, JPG, WebP ពីទូរស័ព្ទ iPhone ឬ Android' : 'Supports iPhone camera, gallery, PNG, JPG, WebP'}
                 </p>
               </div>
             </div>
@@ -242,13 +319,13 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
               <span className="text-[11px] font-bold text-slate-500 block mb-1.5">
                 {isKh ? 'ឬជ្រើសរើស Avatar គំរូស្អាតៗ៖' : 'Or select preset avatar:'}
               </span>
-              <div className="flex items-center gap-2 overflow-x-auto pb-1">
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 touch-scroll no-scrollbar">
                 {PRESET_AVATARS.map((presetUrl, idx) => (
                   <button
                     key={idx}
                     type="button"
                     onClick={() => setAvatar(presetUrl)}
-                    className={`w-9 h-9 rounded-xl overflow-hidden ring-2 transition-all shrink-0 cursor-pointer ${
+                    className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden ring-2 transition-all shrink-0 cursor-pointer ${
                       avatar === presetUrl ? 'ring-indigo-600 scale-105 shadow-xs' : 'ring-transparent hover:ring-slate-300'
                     }`}
                   >
@@ -271,7 +348,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="e.g. Sok Piseth"
-                className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 font-medium"
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 font-medium"
               />
             </div>
 
@@ -287,7 +364,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="012 345 678"
-                    className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
+                    className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
                   />
                 </div>
               </div>
@@ -303,7 +380,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="user@pos.com"
-                    className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
+                    className="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
                   />
                 </div>
               </div>
@@ -321,12 +398,12 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full pl-9 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
+                  className="w-full pl-9 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -351,16 +428,23 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
+              className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
             >
               {isKh ? 'បោះបង់' : 'Cancel'}
             </button>
             <button
               type="submit"
-              disabled={isSaving}
-              className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-600/20 transition-all cursor-pointer disabled:opacity-50"
+              disabled={isSaving || isProcessingPhoto}
+              className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-600/20 transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {isSaving ? (isKh ? 'កំពុងរក្សាទុក...' : 'Saving...') : (isKh ? 'រក្សាទុកការកែប្រែ' : 'Save Changes')}
+              {isSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>{isKh ? 'កំពុងរក្សាទុក...' : 'Saving...'}</span>
+                </>
+              ) : (
+                <span>{isKh ? 'រក្សាទុកការកែប្រែ' : 'Save Changes'}</span>
+              )}
             </button>
           </div>
         </form>

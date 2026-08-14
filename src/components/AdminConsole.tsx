@@ -37,6 +37,7 @@ import {
   saveUserToFirestore,
   logUserActivity 
 } from '../lib/firestoreService';
+import { resizeImageFile } from '../lib/imageUtils';
 
 interface AdminConsoleProps {
   currentUser: User;
@@ -121,21 +122,26 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
   const managersCount = users.filter(u => u.role === 'manager').length;
   const adminsCount = users.filter(u => u.role === 'admin').length;
 
-  // Handle Photo Upload Helper
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, callback: (url: string) => void) => {
+  // Handle Photo Upload Helper with auto-compression
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, callback: (url: string) => void) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) {
       alert(isKh ? 'សូមជ្រើសរើសប្រភេទជារូបភាព!' : 'Please select an image file!');
       return;
     }
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (typeof event.target?.result === 'string') {
-        callback(event.target.result);
-      }
-    };
-    reader.readAsDataURL(file);
+    try {
+      const result = await resizeImageFile(file, 400, 400, 0.85);
+      callback(result.dataUrl);
+    } catch {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (typeof event.target?.result === 'string') {
+          callback(event.target.result);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   // Open Edit Modal

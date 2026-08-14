@@ -119,8 +119,8 @@ export const PosView: React.FC<PosViewProps> = ({
   return (
     <div className="flex-1 flex flex-col min-w-0">
       {/* Category Pills Header */}
-      <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full scrollbar-none">
+      <div className="flex items-center justify-between gap-2.5 sm:gap-3 mb-3 sm:mb-4 flex-wrap">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full no-scrollbar touch-scroll">
           {categories.map((cat) => {
             const isSelected = selectedCategory === cat;
             return (

@@ -109,25 +109,26 @@ export const Header: React.FC<HeaderProps> = ({
   });
 
   return (
-    <header className="bg-white border-b border-slate-100 px-6 py-3.5 flex items-center justify-between sticky top-0 z-20">
-      <div className="flex items-center gap-4 flex-1 max-w-2xl">
+    <header className="bg-white border-b border-slate-100 px-3.5 sm:px-6 py-2.5 sm:py-3.5 pt-safe flex items-center justify-between sticky top-0 z-20">
+      <div className="flex items-center gap-2.5 sm:gap-4 flex-1 max-w-2xl min-w-0">
         {/* Mobile menu trigger & Mobile Brand Logo */}
-        <div className="flex items-center gap-2 md:hidden shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 md:hidden shrink-0">
           {toggleMobileSidebar && (
             <button 
               onClick={toggleMobileSidebar}
-              className="p-2 rounded-lg text-slate-500 hover:bg-slate-100 cursor-pointer"
+              className="p-2 rounded-xl text-slate-600 hover:bg-slate-100 active:bg-slate-200 cursor-pointer min-w-[40px] min-h-[40px] flex items-center justify-center"
+              aria-label="Toggle Navigation Menu"
             >
               <Menu className="w-5 h-5" />
             </button>
           )}
-          <Logo size={32} variant="badge" />
+          <Logo size={30} variant="badge" />
         </div>
 
         {/* Global Search Bar */}
-        <div className="relative w-full max-w-md">
+        <div className="relative flex-1 max-w-md">
           <div className="relative flex items-center">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
             <input
               ref={searchInputRef}
               id="header-global-search"
@@ -138,13 +139,13 @@ export const Header: React.FC<HeaderProps> = ({
                 setIsSearchOpen(true);
               }}
               onFocus={() => setIsSearchOpen(true)}
-              placeholder={isKh ? "ស្វែងរកទំនិញ, បាកូដ, ក្រុម... (Ctrl + K)" : "Search product, barcode, category... (Ctrl + K)"}
-              className="w-full bg-slate-50 hover:bg-slate-100/80 focus:bg-white text-sm text-slate-800 placeholder-slate-400 rounded-xl pl-9 pr-14 py-2 border border-slate-200/80 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+              placeholder={isKh ? "ស្វែងរកទំនិញ... (Ctrl+K)" : "Search product... (Ctrl+K)"}
+              className="w-full bg-slate-50 hover:bg-slate-100/80 focus:bg-white text-xs sm:text-sm text-slate-800 placeholder-slate-400 rounded-xl pl-8 sm:pl-9 pr-8 sm:pr-14 py-2 border border-slate-200/80 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
             />
             {searchQuery ? (
               <button 
                 onClick={() => { setSearchQuery(''); setIsSearchOpen(false); }}
-                className="absolute right-3 p-1 text-slate-400 hover:text-slate-600"
+                className="absolute right-2.5 p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -161,7 +162,7 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="text-[11px] font-semibold text-slate-400 px-2.5 py-1 uppercase tracking-wider">
                 {isKh ? 'លទ្ធផលស្វែងរក' : 'Matching Products'}
               </div>
-              <div className="space-y-1 max-h-64 overflow-y-auto">
+              <div className="space-y-1 max-h-64 overflow-y-auto touch-scroll">
                 {searchResults.map((item) => (
                   <div
                     key={item.id}
@@ -172,26 +173,26 @@ export const Header: React.FC<HeaderProps> = ({
                     }}
                     className="flex items-center justify-between p-2 rounded-lg hover:bg-indigo-50/60 cursor-pointer group transition-colors"
                   >
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-2.5 min-w-0">
                       <img 
                         src={item.image} 
                         alt={item.name} 
-                        className="w-9 h-9 rounded-lg object-cover bg-slate-100 border border-slate-100" 
+                        className="w-9 h-9 rounded-lg object-cover bg-slate-100 border border-slate-100 shrink-0" 
                       />
-                      <div>
-                        <div className="text-sm font-semibold text-slate-800 group-hover:text-indigo-600">
+                      <div className="min-w-0">
+                        <div className="text-xs sm:text-sm font-semibold text-slate-800 group-hover:text-indigo-600 truncate">
                           {item.name} {item.nameKh && <span className="text-xs font-normal text-slate-400">({item.nameKh})</span>}
                         </div>
-                        <div className="text-xs text-slate-400 flex items-center gap-2">
+                        <div className="text-[11px] text-slate-400 flex items-center gap-1.5 truncate">
                           <span className="font-mono">#{item.barcode}</span>
                           <span>•</span>
                           <span>{item.category}</span>
                         </div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-sm font-bold text-slate-900">${item.price.toFixed(2)}</div>
-                      <div className="text-[11px] text-emerald-600 font-medium">Stock: {item.stock}</div>
+                    <div className="text-right shrink-0 ml-2">
+                      <div className="text-xs sm:text-sm font-bold text-slate-900">${item.price.toFixed(2)}</div>
+                      <div className="text-[10px] sm:text-[11px] text-emerald-600 font-medium">Stock: {item.stock}</div>
                     </div>
                   </div>
                 ))}
@@ -205,10 +206,10 @@ export const Header: React.FC<HeaderProps> = ({
           id="header-scan-barcode-button"
           onClick={openBarcodeScanner}
           title={isKh ? "ស្កេនបាកូដដោយកាមេរ៉ា" : "Scan Barcode with Camera"}
-          className="hidden sm:flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100/80 rounded-xl border border-indigo-100 transition-colors cursor-pointer"
+          className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-2 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100/80 active:bg-indigo-200 rounded-xl border border-indigo-100 transition-colors cursor-pointer shrink-0"
         >
           <Barcode className="w-4 h-4 text-indigo-600" />
-          <span>{isKh ? "ស្កេនបាកូដ" : "Scan Barcode"}</span>
+          <span className="hidden sm:inline">{isKh ? "ស្កេនបាកូដ" : "Scan Barcode"}</span>
         </button>
 
         {/* Add Product Shortcut */}
@@ -216,7 +217,7 @@ export const Header: React.FC<HeaderProps> = ({
           id="header-add-product-btn"
           onClick={openNewProductModal}
           title={isKh ? "បន្ថែមទំនិញថ្មី" : "Add New Product"}
-          className="hidden lg:flex items-center gap-1 px-3 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl border border-emerald-100 transition-colors cursor-pointer"
+          className="hidden lg:flex items-center gap-1 px-3 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl border border-emerald-100 transition-colors cursor-pointer shrink-0"
         >
           <Plus className="w-3.5 h-3.5" />
           <span>{isKh ? "ថែមទំនិញ" : "Add Product"}</span>
@@ -224,11 +225,11 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Right Controls */}
-      <div className="flex items-center gap-3.5">
+      <div className="flex items-center gap-2 sm:gap-3.5 shrink-0 ml-2">
         {/* Language Switcher */}
         <button
           onClick={() => setLanguage(language === 'en' ? 'kh' : 'en')}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer"
+          className="flex items-center gap-1 px-2 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 active:bg-slate-100 transition-colors cursor-pointer"
           title="Toggle Language"
         >
           <Globe className="w-3.5 h-3.5 text-slate-500" />

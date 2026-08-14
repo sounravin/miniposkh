@@ -494,6 +494,7 @@ export default function App() {
           currentUser={currentUser}
           onLogout={handleLogout}
           onOpenProfileModal={() => setIsProfileModalOpen(true)}
+          onCloseMobile={() => setMobileSidebarOpen(false)}
         />
       </div>
 
