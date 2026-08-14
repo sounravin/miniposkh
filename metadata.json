@@ -1,0 +1,6 @@
+{
+  "name": "RestoDash POS & Product Income Manager",
+  "description": "Cloud-synced POS & Retail Inventory Management system with Firebase Firestore real-time sync, role-based authentication (Admin/Manager/Cashier), iPhone camera photo uploads, barcode scanning, KHQR payments, and dual currency ($ / KHR).",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,92 @@
+{
+  "entities": {
+    "users": {
+      "title": "User",
+      "description": "Registered system users and staff accounts",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique user ID" },
+        "username": { "type": "string", "description": "Username or login identifier" },
+        "email": { "type": "string", "description": "User email address" },
+        "fullName": { "type": "string", "description": "Full name of the user" },
+        "role": { "type": "string", "enum": ["admin", "cashier", "manager"], "description": "User access level" },
+        "status": { "type": "string", "enum": ["active", "pending", "disabled"], "description": "Account status" },
+        "avatar": { "type": "string", "description": "Avatar image URL or base64" },
+        "phone": { "type": "string", "description": "Contact phone number" },
+        "createdAt": { "type": "string", "description": "ISO timestamp of registration" },
+        "lastLogin": { "type": "string", "description": "ISO timestamp of last login" }
+      },
+      "required": ["username", "role", "status"]
+    },
+    "products": {
+      "title": "Product",
+      "description": "Product catalog items with barcode, pricing, and stock",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "nameKh": { "type": "string" },
+        "barcode": { "type": "string" },
+        "price": { "type": "number" },
+        "costPrice": { "type": "number" },
+        "category": { "type": "string" },
+        "stock": { "type": "number" },
+        "minStock": { "type": "number" },
+        "image": { "type": "string" },
+        "unit": { "type": "string" },
+        "isPopular": { "type": "boolean" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["name", "price", "stock", "category"]
+    },
+    "orders": {
+      "title": "Order",
+      "description": "Completed POS sales transactions",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "orderNumber": { "type": "string" },
+        "items": { "type": "array" },
+        "subtotal": { "type": "number" },
+        "discount": { "type": "number" },
+        "tax": { "type": "number" },
+        "total": { "type": "number" },
+        "paymentMethod": { "type": "string" },
+        "cashierName": { "type": "string" },
+        "cashierId": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["orderNumber", "items", "total", "paymentMethod"]
+    },
+    "settings": {
+      "title": "Settings",
+      "description": "Store configuration and POS settings",
+      "type": "object",
+      "properties": {
+        "shopName": { "type": "string" },
+        "shopNameKh": { "type": "string" },
+        "address": { "type": "string" },
+        "phone": { "type": "string" },
+        "taxRate": { "type": "number" },
+        "khrRate": { "type": "number" },
+        "receiptFooter": { "type": "string" },
+        "receiptFooterKh": { "type": "string" },
+        "soundEnabled": { "type": "boolean" }
+      }
+    },
+    "activity_logs": {
+      "title": "ActivityLog",
+      "description": "Audit and activity logs for admin oversight",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "username": { "type": "string" },
+        "action": { "type": "string" },
+        "details": { "type": "string" },
+        "timestamp": { "type": "string" }
+      }
+    }
+  }
+}

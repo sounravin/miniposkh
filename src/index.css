@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-khmer: 'Kantumruy Pro', 'Noto Sans Khmer', 'Battambang', system-ui, -apple-system, sans-serif;
+    --font-latin: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  }
+
+  html {
+    font-family: 'Kantumruy Pro', 'Noto Sans Khmer', 'Plus Jakarta Sans', 'Battambang', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    font-family: inherit;
+    letter-spacing: -0.01em;
+    line-height: 1.55;
+  }
+
+  /* Khmer typography enhancements for clarity and legibility */
+  [lang="kh"],
+  .lang-kh,
+  .font-khmer {
+    font-family: 'Kantumruy Pro', 'Noto Sans Khmer', 'Battambang', sans-serif !important;
+    line-height: 1.65 !important;
+    letter-spacing: 0.015em;
+  }
+}
+
+/* Ensure Khmer script characters render clearly without vowel or subscript clipping */
+.khmer-title {
+  font-family: 'Kantumruy Pro', 'Noto Sans Khmer', sans-serif;
+  line-height: 1.5;
+  font-weight: 600;
+}
+
+.khmer-text {
+  font-family: 'Kantumruy Pro', 'Noto Sans Khmer', 'Battambang', sans-serif;
+  line-height: 1.6;
+}
+
+/* Optical size tuning for Khmer labels */
+[lang="kh"] h1, [lang="kh"] h2, [lang="kh"] h3, [lang="kh"] h4, [lang="kh"] h5, [lang="kh"] h6,
+[lang="kh"] button, [lang="kh"] input, [lang="kh"] select, [lang="kh"] textarea {
+  font-family: 'Kantumruy Pro', 'Noto Sans Khmer', 'Battambang', sans-serif;
+}
+
+/* Custom scrollbars for POS views */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.6);
+}
