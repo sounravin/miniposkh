@@ -55,9 +55,9 @@ export const WelcomeAuthPage: React.FC<WelcomeAuthPageProps> = ({
   const [successMessage, setSuccessMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Sign In Form State
-  const [loginIdentifier, setLoginIdentifier] = useState('admin');
-  const [loginPassword, setLoginPassword] = useState('admin');
+  // Sign In Form State (Empty by default for user input)
+  const [loginIdentifier, setLoginIdentifier] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
 
   // Sign Up Form State
   const [regFullName, setRegFullName] = useState('');
@@ -214,11 +214,8 @@ export const WelcomeAuthPage: React.FC<WelcomeAuthPageProps> = ({
         <div className="flex items-center gap-3">
           <Logo size={44} variant="badge" />
           <div>
-            <h1 className="text-lg font-black tracking-tight text-white flex items-center gap-2">
+            <h1 className="text-lg font-black tracking-tight text-white">
               MINI-POS-KH
-              <span className="text-[10px] font-bold uppercase bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">
-                Firestore Cloud Active
-              </span>
             </h1>
             <p className="text-xs text-slate-400 font-medium">
               {isKh ? 'ប្រព័ន្ធគ្រប់គ្រងការលក់ និងស្តុកទំនិញទំនើប' : 'Smart Retail & Inventory Management Platform'}
@@ -340,7 +337,7 @@ export const WelcomeAuthPage: React.FC<WelcomeAuthPageProps> = ({
                       required
                       value={loginIdentifier}
                       onChange={(e) => setLoginIdentifier(e.target.value)}
-                      placeholder={isKh ? 'ឧទាហរណ៍: admin, manager ឬ cashier01' : 'e.g. admin, manager, or cashier01'}
+                      placeholder={isKh ? 'បញ្ចូលឈ្មោះគណនី ឬ អ៊ីមែល' : 'Enter username or email'}
                       className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 font-medium"
                     />
                   </div>
@@ -587,9 +584,6 @@ export const WelcomeAuthPage: React.FC<WelcomeAuthPageProps> = ({
       {/* Footer */}
       <footer className="px-6 lg:px-12 py-4 border-t border-white/10 text-center text-xs text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-2 z-10">
         <p>© 2026 MINI-POS-KH Point of Sale & Retail Management. All rights reserved.</p>
-        <p className="text-[11px] text-slate-500">
-          Admin pre-set: <span className="text-slate-300 font-mono">admin / admin</span> • Manager: <span className="text-slate-300 font-mono">manager / 123</span>
-        </p>
       </footer>
     </div>
   );
