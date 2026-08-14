@@ -13,9 +13,23 @@ import {
   ArrowRight,
   Sliders
 } from 'lucide-react';
-import { Html5Qrcode } from 'html5-qrcode';
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { Product } from '../types';
 import { sounds } from '../utils/audio';
+
+const SUPPORTED_SCAN_FORMATS = [
+  Html5QrcodeSupportedFormats.EAN_13,
+  Html5QrcodeSupportedFormats.EAN_8,
+  Html5QrcodeSupportedFormats.UPC_A,
+  Html5QrcodeSupportedFormats.UPC_E,
+  Html5QrcodeSupportedFormats.CODE_128,
+  Html5QrcodeSupportedFormats.CODE_39,
+  Html5QrcodeSupportedFormats.CODE_93,
+  Html5QrcodeSupportedFormats.ITF,
+  Html5QrcodeSupportedFormats.CODABAR,
+  Html5QrcodeSupportedFormats.QR_CODE,
+  Html5QrcodeSupportedFormats.DATA_MATRIX,
+];
 
 interface BarcodeScannerModalProps {
   isOpen: boolean;
@@ -178,14 +192,20 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
     const startCamera = async () => {
       try {
         setCameraError(null);
-        const html5QrCode = new Html5Qrcode(scannerRegionId);
+        const html5QrCode = new Html5Qrcode(scannerRegionId, {
+          formatsToSupport: SUPPORTED_SCAN_FORMATS,
+          verbose: false,
+          experimentalFeatures: {
+            useBarCodeDetectorIfSupported: true
+          }
+        });
         html5QrCodeRef.current = html5QrCode;
 
         await html5QrCode.start(
           { facingMode: 'environment' },
           {
-            fps: 15,
-            aspectRatio: 1.333334,
+            fps: 20,
+            disableFlip: false,
             videoConstraints: {
               facingMode: 'environment',
               width: { ideal: 1920, min: 1280 },
