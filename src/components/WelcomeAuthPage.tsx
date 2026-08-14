@@ -208,383 +208,731 @@ export const WelcomeAuthPage: React.FC<WelcomeAuthPageProps> = ({
       <div className="absolute top-1/2 -right-40 w-96 h-96 bg-emerald-600/15 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute -bottom-40 left-1/3 w-96 h-96 bg-amber-600/15 rounded-full blur-3xl pointer-events-none" />
 
-      {/* Top Navbar */}
-      <header className="px-6 lg:px-12 py-5 flex items-center justify-between z-10 border-b border-white/10 backdrop-blur-md">
-        <div className="flex items-center gap-3">
-          <Logo size={44} variant="badge" />
-          <div>
-            <h1 className="text-lg font-black tracking-tight text-white">
-              MINI MART POS
-            </h1>
-            <p className="text-xs text-slate-400 font-medium">
-              {isKh ? 'ប្រព័ន្ធគ្រប់គ្រងការលក់ និងស្តុកទំនិញទំនើប' : 'Smart Retail & Inventory Management Platform'}
-            </p>
-          </div>
-        </div>
-
-        {/* Language Switcher */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 bg-white/10 p-1 rounded-xl border border-white/15">
+      {/* Mobile-Only Dedicated Phone UI Layout (< lg screens) */}
+      <div className="block lg:hidden w-full min-h-screen bg-slate-100 py-4 px-3 sm:px-6 relative z-10">
+        {/* Floating Language Switcher */}
+        <div className="flex justify-end mb-2">
+          <div className="inline-flex items-center gap-1 bg-white/90 backdrop-blur-sm p-1 rounded-xl border border-slate-200/80 shadow-2xs">
             <button
               onClick={() => setLanguage('kh')}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                language === 'kh' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-300 hover:text-white'
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                language === 'kh' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               🇰🇭 ខ្មែរ
             </button>
             <button
               onClick={() => setLanguage('en')}
-              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                language === 'en' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-300 hover:text-white'
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                language === 'en' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               🇬🇧 EN
             </button>
           </div>
         </div>
-      </header>
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-6 lg:px-12 py-8 lg:py-12 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center z-10">
-        
-        {/* Left Side: System Introduction */}
-        <div className="lg:col-span-7 space-y-6">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-semibold">
-            <Sparkles className="w-4 h-4 text-indigo-400" />
-            {isKh ? 'ប្រព័ន្ធលក់ជំនាន់ថ្មី MINI MART POS v2.5' : 'Next-Gen Retail POS System v2.5'}
+        {/* Centered Mobile Card */}
+        <div className="w-full max-w-sm mx-auto bg-white/98 backdrop-blur-md rounded-3xl p-5 sm:p-6 shadow-xl border border-slate-200/80">
+          
+          {/* Circular Brand Logo */}
+          <div className="flex justify-center pt-1 pb-4">
+            <Logo size={104} variant="badge" />
           </div>
 
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight leading-tight">
-            {isKh ? (
-              <>គ្រប់គ្រងការលក់ ស្តុកទំនិញ និងចំណូល <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-sky-300 to-emerald-400">តាម Cloud Real-Time</span></>
-            ) : (
-              <>Smart Point of Sale & Inventory <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-sky-300 to-emerald-400">Powered by Firestore Cloud</span></>
-            )}
-          </h2>
+          {/* Segmented Tab Switcher (Matching Mockup) */}
+          <div className="flex items-center p-1 bg-slate-100/90 rounded-2xl mb-4 border border-slate-200/70">
+            <button
+              type="button"
+              onClick={() => {
+                setAuthMode('signin');
+                setErrorMessage('');
+                setSuccessMessage('');
+              }}
+              className={`flex-1 py-2 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                authMode === 'signin' 
+                  ? 'bg-white text-indigo-700 shadow-xs' 
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              <span>{isKh ? 'ចូលប្រព័ន្ធ (Sign In)' : 'Sign In'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAuthMode('signup');
+                setErrorMessage('');
+                setSuccessMessage('');
+              }}
+              className={`flex-1 py-2 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                authMode === 'signup' 
+                  ? 'bg-white text-indigo-700 shadow-xs' 
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span>{isKh ? 'ចូលរួមថ្មី (Sign Up)' : 'Sign Up'}</span>
+            </button>
+          </div>
 
-          <p className="text-slate-300 text-sm sm:text-base leading-relaxed max-w-2xl">
-            {isKh 
-              ? 'សូមស្វាគមន៍មកកាន់ MINI MART POS! ងាយស្រួល ឆាប់រហ័ស គាំទ្រការស្កេនបាកូដ ការទូទាត់ KHQR និងការ Upload រូបភាពទំនិញពីទូរស័ព្ទ iPhone យ៉ាងរលូន។' 
-              : 'Welcome to MINI MART POS! Fast, responsive POS with barcode scanner, live KHQR payment, camera upload from iPhone with auto image compression, and cloud-synced user management.'}
+          {/* Error / Success Notifications */}
+          {errorMessage && (
+            <div className="mb-3.5 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2 animate-in fade-in">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span className="leading-tight">{errorMessage}</span>
+            </div>
+          )}
+          {successMessage && (
+            <div className="mb-3.5 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs flex items-start gap-2 animate-in fade-in">
+              <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+              <span className="leading-tight">{successMessage}</span>
+            </div>
+          )}
+
+          {/* 1. MOBILE SIGN IN FORM */}
+          {authMode === 'signin' && (
+            <form onSubmit={handleSignIn} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  {isKh ? 'ឈ្មោះគណនី ឬ អ៊ីមែល (Username / Email)' : 'Username or Email'}
+                </label>
+                <div className="relative">
+                  <UserIcon className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    required
+                    value={loginIdentifier}
+                    onChange={(e) => setLoginIdentifier(e.target.value)}
+                    placeholder={isKh ? 'បញ្ចូលឈ្មោះគណនី ឬ អ៊ីមែល' : 'Enter username or email'}
+                    className="w-full pl-9 pr-3 py-2 bg-slate-50/90 border border-slate-200/90 rounded-xl text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all font-medium"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  {isKh ? 'ពាក្យសម្ងាត់ (Password) *' : 'Password *'}
+                </label>
+                <div className="relative">
+                  <KeyRound className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full pl-9 pr-9 py-2 bg-slate-50/90 border border-slate-200/90 rounded-xl text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all font-medium"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full mt-2 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 active:scale-[0.99] text-white rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md shadow-indigo-200 transition-all cursor-pointer disabled:opacity-50"
+              >
+                {loading ? (
+                  <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <LogIn className="w-4 h-4" />
+                    <span>{isKh ? 'ចូលប្រព័ន្ធ (Sign In)' : 'Sign In'}</span>
+                  </>
+                )}
+              </button>
+            </form>
+          )}
+
+          {/* 2. MOBILE SIGN UP FORM (Matches Uploaded Mockup Exactly) */}
+          {authMode === 'signup' && (
+            <form onSubmit={handleSignUp} className="space-y-3">
+              
+              {/* Profile Avatar Box */}
+              <div className="p-3 bg-slate-50/90 rounded-2xl border border-slate-200/80 space-y-2.5">
+                <div className="text-xs font-bold text-slate-700">
+                  {isKh ? 'រូបភាពសមាជិក (Profile Avatar)' : 'Profile Avatar'}
+                </div>
+                
+                {/* Top Row: Preview + Upload Button */}
+                <div className="flex items-center gap-3">
+                  <img
+                    src={regAvatar || AUTH_PRESET_AVATARS[0]}
+                    alt="Profile Avatar"
+                    className="w-12 h-12 rounded-full object-cover ring-2 ring-indigo-400/80 shadow-2xs shrink-0"
+                  />
+                  <div className="flex-1">
+                    <input
+                      type="file"
+                      ref={regFileInputRef}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          try {
+                            const result = await resizeImageFile(file, 400, 400, 0.85);
+                            setRegAvatar(result.dataUrl);
+                          } catch {
+                            const reader = new FileReader();
+                            reader.onload = (evt) => {
+                              if (typeof evt.target?.result === 'string') {
+                                setRegAvatar(evt.target.result);
+                              }
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }
+                      }}
+                      accept="image/*"
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => regFileInputRef.current?.click()}
+                      className="w-full sm:w-auto px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-200/90 text-slate-700 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs transition-colors"
+                    >
+                      <Upload className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>{isKh ? 'Upload រូបភាពប្រវត្តិរូប' : 'Upload Profile Photo'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Bottom Row: Avatar Presets */}
+                <div className="flex items-center justify-between gap-1.5 pt-1">
+                  {AUTH_PRESET_AVATARS.map((preset, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setRegAvatar(preset)}
+                      className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full overflow-hidden ring-2 transition-all cursor-pointer shrink-0 ${
+                        regAvatar === preset ? 'ring-indigo-600 scale-110 shadow-xs' : 'ring-transparent opacity-75 hover:opacity-100'
+                      }`}
+                    >
+                      <img src={preset} alt="preset" className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Full Name */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  {isKh ? 'ឈ្មោះពេញ (Full Name) *' : 'Full Name *'}
+                </label>
+                <div className="relative">
+                  <UserIcon className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    required
+                    value={regFullName}
+                    onChange={(e) => setRegFullName(e.target.value)}
+                    placeholder={isKh ? 'ឧទាហរណ៍: សុខ សំណាង' : 'e.g. Sok Samnang'}
+                    className="w-full pl-8 pr-3 py-2 bg-slate-50/90 border border-slate-200/90 rounded-xl text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all font-medium"
+                  />
+                </div>
+              </div>
+
+              {/* 2-Column: Username & Role */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    {isKh ? 'ឈ្មោះគណនី (Username) *' : 'Username *'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={regUsername}
+                    onChange={(e) => setRegUsername(e.target.value)}
+                    placeholder="samnang01"
+                    className="w-full px-2.5 py-2 bg-slate-50/90 border border-slate-200/90 rounded-xl text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    {isKh ? 'តួនាទី (Role)' : 'Role'}
+                  </label>
+                  <select
+                    value={regRole}
+                    onChange={(e) => setRegRole(e.target.value as any)}
+                    className="w-full px-2 py-2 bg-slate-50/90 border border-slate-200/90 rounded-xl text-xs sm:text-sm font-bold text-indigo-700 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all cursor-pointer"
+                  >
+                    <option value="cashier">{isKh ? 'បេឡាករ (Cashier)' : 'Cashier'}</option>
+                    <option value="manager">{isKh ? 'អ្នកគ្រប់គ្រង (Manager)' : 'Manager'}</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* 2-Column: Phone & Email */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    {isKh ? 'លេខទូរស័ព្ទ' : 'Phone'}
+                  </label>
+                  <div className="relative">
+                    <Phone className="w-3 h-3 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="tel"
+                      value={regPhone}
+                      onChange={(e) => setRegPhone(e.target.value)}
+                      placeholder="012 345 678"
+                      className="w-full pl-7 pr-2 py-2 bg-slate-50/90 border border-slate-200/90 rounded-xl text-[11px] sm:text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all font-medium"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    {isKh ? 'អ៊ីមែល' : 'Email'}
+                  </label>
+                  <div className="relative">
+                    <Mail className="w-3 h-3 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="email"
+                      value={regEmail}
+                      onChange={(e) => setRegEmail(e.target.value)}
+                      placeholder="user@pos.com"
+                      className="w-full pl-7 pr-2 py-2 bg-slate-50/90 border border-slate-200/90 rounded-xl text-[11px] sm:text-xs text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all font-medium"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Password */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  {isKh ? 'ពាក្យសម្ងាត់ (Password) *' : 'Password *'}
+                </label>
+                <div className="relative">
+                  <KeyRound className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={regPassword}
+                    onChange={(e) => setRegPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full pl-8 pr-8 py-2 bg-slate-50/90 border border-slate-200/90 rounded-xl text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all font-medium"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Primary Action Button (Matches Mockup) */}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full mt-2 py-3 bg-[#4338CA] hover:bg-[#3730A3] active:bg-[#312E81] text-white rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md shadow-indigo-400/30 transition-all cursor-pointer disabled:opacity-50"
+              >
+                {loading ? (
+                  <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <UserPlus className="w-4 h-4" />
+                    <span>{isKh ? 'បង្កើតគណនី និងចូលប្រព័ន្ធ' : 'Create Account & Enter'}</span>
+                  </>
+                )}
+              </button>
+            </form>
+          )}
+
+          <p className="text-[10px] text-center text-slate-400 mt-3.5">
+            {isKh ? 'ទិន្នន័យត្រូវបានការពារ និងរក្សាទុកលើ Firestore Cloud' : 'Secured with Cloud Firestore Sync'}
           </p>
         </div>
+      </div>
 
-        {/* Right Side: Auth Card (Sign In / Sign Up) */}
-        <div className="lg:col-span-5">
-          <div className="bg-white/95 backdrop-blur-md text-slate-900 p-6 sm:p-8 rounded-3xl shadow-2xl border border-white/20">
-            
-            {/* Tab Switcher */}
-            <div className="flex items-center p-1 bg-slate-100 rounded-2xl mb-6">
+      {/* Desktop Layout (Hidden on mobile, active for lg+ screens) */}
+      <div className="hidden lg:flex flex-col justify-between min-h-screen w-full">
+        {/* Top Navbar */}
+        <header className="px-6 lg:px-12 py-5 flex items-center justify-between z-10 border-b border-white/10 backdrop-blur-md">
+          <div className="flex items-center gap-3">
+            <Logo size={44} variant="badge" />
+            <div>
+              <h1 className="text-lg font-black tracking-tight text-white">
+                MINI MART POS
+              </h1>
+              <p className="text-xs text-slate-400 font-medium">
+                {isKh ? 'ប្រព័ន្ធគ្រប់គ្រងការលក់ និងស្តុកទំនិញទំនើប' : 'Smart Retail & Inventory Management Platform'}
+              </p>
+            </div>
+          </div>
+
+          {/* Language Switcher */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1 bg-white/10 p-1 rounded-xl border border-white/15">
               <button
-                type="button"
-                onClick={() => {
-                  setAuthMode('signin');
-                  setErrorMessage('');
-                  setSuccessMessage('');
-                }}
-                className={`flex-1 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                  authMode === 'signin' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                onClick={() => setLanguage('kh')}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  language === 'kh' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-300 hover:text-white'
                 }`}
               >
-                <LogIn className="w-4 h-4" />
-                {isKh ? 'ចូលប្រព័ន្ធ (Sign In)' : 'Sign In'}
+                🇰🇭 ខ្មែរ
               </button>
               <button
-                type="button"
-                onClick={() => {
-                  setAuthMode('signup');
-                  setErrorMessage('');
-                  setSuccessMessage('');
-                }}
-                className={`flex-1 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                  authMode === 'signup' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                onClick={() => setLanguage('en')}
+                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  language === 'en' ? 'bg-indigo-600 text-white shadow-xs' : 'text-slate-300 hover:text-white'
                 }`}
               >
-                <UserPlus className="w-4 h-4" />
-                {isKh ? 'ចុះឈ្មោះថ្មី (Sign Up)' : 'Sign Up'}
+                🇬🇧 EN
               </button>
             </div>
+          </div>
+        </header>
 
-            {/* Error / Success Feedback */}
-            {errorMessage && (
-              <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <div>{errorMessage}</div>
-                </div>
-              </div>
-            )}
-            {successMessage && (
-              <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
-                <span>{successMessage}</span>
-              </div>
-            )}
+        {/* Main Content Area */}
+        <main className="flex-1 max-w-7xl w-full mx-auto px-6 lg:px-12 py-8 lg:py-12 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center z-10">
+          
+          {/* Left Side: System Introduction */}
+          <div className="lg:col-span-7 space-y-6">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-semibold">
+              <Sparkles className="w-4 h-4 text-indigo-400" />
+              {isKh ? 'ប្រព័ន្ធលក់ជំនាន់ថ្មី MINI MART POS v2.5' : 'Next-Gen Retail POS System v2.5'}
+            </div>
 
-            {/* 1. SIGN IN FORM */}
-            {authMode === 'signin' && (
-              <form onSubmit={handleSignIn} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    {isKh ? 'ឈ្មោះគណនី ឬ អ៊ីមែល (Username / Email)' : 'Username or Email'}
-                  </label>
-                  <div className="relative">
-                    <UserIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      required
-                      value={loginIdentifier}
-                      onChange={(e) => setLoginIdentifier(e.target.value)}
-                      placeholder={isKh ? 'បញ្ចូលឈ្មោះគណនី ឬ អ៊ីមែល' : 'Enter username or email'}
-                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 font-medium"
-                    />
-                  </div>
-                </div>
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight leading-tight">
+              {isKh ? (
+                <>គ្រប់គ្រងការលក់ ស្តុកទំនិញ និងចំណូល <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-sky-300 to-emerald-400">តាម Cloud Real-Time</span></>
+              ) : (
+                <>Smart Point of Sale & Inventory <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-sky-300 to-emerald-400">Powered by Firestore Cloud</span></>
+              )}
+            </h2>
 
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-xs font-bold text-slate-700">
-                      {isKh ? 'ពាក្យសម្ងាត់ (Password)' : 'Password'}
-                    </label>
-                  </div>
-                  <div className="relative">
-                    <KeyRound className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      required
-                      value={loginPassword}
-                      onChange={(e) => setLoginPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 font-medium"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-indigo-200 transition-all cursor-pointer disabled:opacity-50"
-                >
-                  {loading ? (
-                    <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <LogIn className="w-4 h-4" />
-                      {isKh ? 'ចូលប្រព័ន្ធឥឡូវនេះ (Sign In)' : 'Sign In to POS'}
-                    </>
-                  )}
-                </button>
-              </form>
-            )}
-
-            {/* 2. SIGN UP FORM */}
-            {authMode === 'signup' && (
-              <form onSubmit={handleSignUp} className="space-y-3.5">
-                {/* Avatar / Photo Upload in Registration */}
-                <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2">
-                  <label className="block text-xs font-bold text-slate-700">
-                    {isKh ? 'រូបភាពគណនី (Profile Avatar)' : 'Profile Avatar & Photo'}
-                  </label>
-                  <div className="flex items-center gap-3">
-                    <img
-                      src={regAvatar || AUTH_PRESET_AVATARS[0]}
-                      alt="Selected Avatar"
-                      className="w-12 h-12 rounded-full object-cover ring-2 ring-indigo-300 shadow-xs shrink-0"
-                    />
-                    <div className="flex-1 space-y-1">
-                      <input
-                        type="file"
-                        ref={regFileInputRef}
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            try {
-                              const result = await resizeImageFile(file, 400, 400, 0.85);
-                              setRegAvatar(result.dataUrl);
-                            } catch {
-                              const reader = new FileReader();
-                              reader.onload = (evt) => {
-                                if (typeof evt.target?.result === 'string') {
-                                  setRegAvatar(evt.target.result);
-                                }
-                              };
-                              reader.readAsDataURL(file);
-                            }
-                          }
-                        }}
-                        accept="image/*"
-                        className="hidden"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => regFileInputRef.current?.click()}
-                        className="px-3 py-1 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-2xs"
-                      >
-                        <Upload className="w-3.5 h-3.5 text-indigo-600" />
-                        <span>{isKh ? 'Upload រូបភាពផ្ទាល់ខ្លួន' : 'Upload Custom Photo'}</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Presets */}
-                  <div className="flex items-center gap-1.5 pt-1 overflow-x-auto">
-                    {AUTH_PRESET_AVATARS.map((preset, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => setRegAvatar(preset)}
-                        className={`w-7 h-7 rounded-full overflow-hidden ring-2 transition-all cursor-pointer ${
-                          regAvatar === preset ? 'ring-indigo-600 scale-110 shadow-xs' : 'ring-transparent opacity-70 hover:opacity-100'
-                        }`}
-                      >
-                        <img src={preset} alt="preset" className="w-full h-full object-cover" />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    {isKh ? 'ឈ្មោះពេញ (Full Name) *' : 'Full Name *'}
-                  </label>
-                  <div className="relative">
-                    <UserIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      required
-                      value={regFullName}
-                      onChange={(e) => setRegFullName(e.target.value)}
-                      placeholder={isKh ? 'ឧទាហរណ៍: សុខ សំណាង' : 'e.g. Sok Samnang'}
-                      className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 font-medium"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2.5">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      {isKh ? 'ឈ្មោះគណនី (Username) *' : 'Username *'}
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={regUsername}
-                      onChange={(e) => setRegUsername(e.target.value)}
-                      placeholder="samnang01"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 font-medium"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      {isKh ? 'តួនាទី (Role)' : 'Role'}
-                    </label>
-                    <select
-                      value={regRole}
-                      onChange={(e) => setRegRole(e.target.value as any)}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 font-bold text-indigo-700"
-                    >
-                      <option value="cashier">{isKh ? 'បេឡាករ (Cashier)' : 'Cashier'}</option>
-                      <option value="manager">{isKh ? 'អ្នកគ្រប់គ្រង (Manager)' : 'Manager'}</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2.5">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      {isKh ? 'លេខទូរស័ព្ទ' : 'Phone'}
-                    </label>
-                    <div className="relative">
-                      <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                      <input
-                        type="tel"
-                        value={regPhone}
-                        onChange={(e) => setRegPhone(e.target.value)}
-                        placeholder="012 345 678"
-                        className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      {isKh ? 'អ៊ីមែល' : 'Email'}
-                    </label>
-                    <div className="relative">
-                      <Mail className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                      <input
-                        type="email"
-                        value={regEmail}
-                        onChange={(e) => setRegEmail(e.target.value)}
-                        placeholder="user@pos.com"
-                        className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    {isKh ? 'ពាក្យសម្ងាត់ (Password) *' : 'Password *'}
-                  </label>
-                  <div className="relative">
-                    <KeyRound className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      required
-                      value={regPassword}
-                      onChange={(e) => setRegPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full pl-10 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 font-medium"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-indigo-200 transition-all cursor-pointer disabled:opacity-50 mt-2"
-                >
-                  {loading ? (
-                    <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      <UserPlus className="w-4 h-4" />
-                      {isKh ? 'បង្កើតគណនី និងចូលប្រព័ន្ធ' : 'Create Account & Enter'}
-                    </>
-                  )}
-                </button>
-              </form>
-            )}
-
-            <p className="text-[11px] text-center text-slate-400 mt-4">
-              {isKh ? 'ទិន្នន័យទាំងអស់ត្រូវបានការពារ និងរក្សាទុកលើ Firestore Cloud' : 'All accounts synced securely via Google Cloud Firestore.'}
+            <p className="text-slate-300 text-sm sm:text-base leading-relaxed max-w-2xl">
+              {isKh 
+                ? 'សូមស្វាគមន៍មកកាន់ MINI MART POS! ងាយស្រួល ឆាប់រហ័ស គាំទ្រការស្កេនបាកូដ ការទូទាត់ KHQR និងការ Upload រូបភាពទំនិញពីទូរស័ព្ទ iPhone យ៉ាងរលូន។' 
+                : 'Welcome to MINI MART POS! Fast, responsive POS with barcode scanner, live KHQR payment, camera upload from iPhone with auto image compression, and cloud-synced user management.'}
             </p>
           </div>
-        </div>
 
-      </main>
+          {/* Right Side: Auth Card (Sign In / Sign Up) */}
+          <div className="lg:col-span-5">
+            <div className="bg-white/95 backdrop-blur-md text-slate-900 p-6 sm:p-8 rounded-3xl shadow-2xl border border-white/20">
+              
+              {/* Tab Switcher */}
+              <div className="flex items-center p-1 bg-slate-100 rounded-2xl mb-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('signin');
+                    setErrorMessage('');
+                    setSuccessMessage('');
+                  }}
+                  className={`flex-1 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                    authMode === 'signin' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <LogIn className="w-4 h-4" />
+                  {isKh ? 'ចូលប្រព័ន្ធ (Sign In)' : 'Sign In'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('signup');
+                    setErrorMessage('');
+                    setSuccessMessage('');
+                  }}
+                  className={`flex-1 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                    authMode === 'signup' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <UserPlus className="w-4 h-4" />
+                  {isKh ? 'ចុះឈ្មោះថ្មី (Sign Up)' : 'Sign Up'}
+                </button>
+              </div>
 
-      {/* Footer */}
-      <footer className="px-6 lg:px-12 py-4 border-t border-white/10 text-center text-xs text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-2 z-10">
-        <p>© 2026 MINI MART POS Point of Sale & Retail Management. All rights reserved.</p>
-      </footer>
+              {/* Error / Success Feedback */}
+              {errorMessage && (
+                <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <div>{errorMessage}</div>
+                  </div>
+                </div>
+              )}
+              {successMessage && (
+                <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs flex items-start gap-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>{successMessage}</span>
+                </div>
+              )}
+
+              {/* 1. DESKTOP SIGN IN FORM */}
+              {authMode === 'signin' && (
+                <form onSubmit={handleSignIn} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                      {isKh ? 'ឈ្មោះគណនី ឬ អ៊ីមែល (Username / Email)' : 'Username or Email'}
+                    </label>
+                    <div className="relative">
+                      <UserIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        required
+                        value={loginIdentifier}
+                        onChange={(e) => setLoginIdentifier(e.target.value)}
+                        placeholder={isKh ? 'បញ្ចូលឈ្មោះគណនី ឬ អ៊ីមែល' : 'Enter username or email'}
+                        className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 font-medium"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-bold text-slate-700">
+                        {isKh ? 'ពាក្យសម្ងាត់ (Password)' : 'Password'}
+                      </label>
+                    </div>
+                    <div className="relative">
+                      <KeyRound className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        required
+                        value={loginPassword}
+                        onChange={(e) => setLoginPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 font-medium"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-indigo-200 transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    {loading ? (
+                      <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <LogIn className="w-4 h-4" />
+                        {isKh ? 'ចូលប្រព័ន្ធឥឡូវនេះ (Sign In)' : 'Sign In to POS'}
+                      </>
+                    )}
+                  </button>
+                </form>
+              )}
+
+              {/* 2. DESKTOP SIGN UP FORM */}
+              {authMode === 'signup' && (
+                <form onSubmit={handleSignUp} className="space-y-3.5">
+                  {/* Avatar / Photo Upload in Registration */}
+                  <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2">
+                    <label className="block text-xs font-bold text-slate-700">
+                      {isKh ? 'រូបភាពគណនី (Profile Avatar)' : 'Profile Avatar & Photo'}
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={regAvatar || AUTH_PRESET_AVATARS[0]}
+                        alt="Selected Avatar"
+                        className="w-12 h-12 rounded-full object-cover ring-2 ring-indigo-300 shadow-xs shrink-0"
+                      />
+                      <div className="flex-1 space-y-1">
+                        <input
+                          type="file"
+                          ref={regFileInputRef}
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              try {
+                                const result = await resizeImageFile(file, 400, 400, 0.85);
+                                setRegAvatar(result.dataUrl);
+                              } catch {
+                                const reader = new FileReader();
+                                reader.onload = (evt) => {
+                                  if (typeof evt.target?.result === 'string') {
+                                    setRegAvatar(evt.target.result);
+                                  }
+                                };
+                                reader.readAsDataURL(file);
+                              }
+                            }
+                          }}
+                          accept="image/*"
+                          className="hidden"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => regFileInputRef.current?.click()}
+                          className="px-3 py-1 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                        >
+                          <Upload className="w-3.5 h-3.5 text-indigo-600" />
+                          <span>{isKh ? 'Upload រូបភាពផ្ទាល់ខ្លួន' : 'Upload Custom Photo'}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Presets */}
+                    <div className="flex items-center gap-1.5 pt-1 overflow-x-auto">
+                      {AUTH_PRESET_AVATARS.map((preset, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setRegAvatar(preset)}
+                          className={`w-7 h-7 rounded-full overflow-hidden ring-2 transition-all cursor-pointer ${
+                            regAvatar === preset ? 'ring-indigo-600 scale-110 shadow-xs' : 'ring-transparent opacity-70 hover:opacity-100'
+                          }`}
+                        >
+                          <img src={preset} alt="preset" className="w-full h-full object-cover" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      {isKh ? 'ឈ្មោះពេញ (Full Name) *' : 'Full Name *'}
+                    </label>
+                    <div className="relative">
+                      <UserIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        required
+                        value={regFullName}
+                        onChange={(e) => setRegFullName(e.target.value)}
+                        placeholder={isKh ? 'ឧទាហរណ៍: សុខ សំណាង' : 'e.g. Sok Samnang'}
+                        className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 font-medium"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        {isKh ? 'ឈ្មោះគណនី (Username) *' : 'Username *'}
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={regUsername}
+                        onChange={(e) => setRegUsername(e.target.value)}
+                        placeholder="samnang01"
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 font-medium"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        {isKh ? 'តួនាទី (Role)' : 'Role'}
+                      </label>
+                      <select
+                        value={regRole}
+                        onChange={(e) => setRegRole(e.target.value as any)}
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 font-bold text-indigo-700"
+                      >
+                        <option value="cashier">{isKh ? 'បេឡាករ (Cashier)' : 'Cashier'}</option>
+                        <option value="manager">{isKh ? 'អ្នកគ្រប់គ្រង (Manager)' : 'Manager'}</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        {isKh ? 'លេខទូរស័ព្ទ' : 'Phone'}
+                      </label>
+                      <div className="relative">
+                        <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="tel"
+                          value={regPhone}
+                          onChange={(e) => setRegPhone(e.target.value)}
+                          placeholder="012 345 678"
+                          className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        {isKh ? 'អ៊ីមែល' : 'Email'}
+                      </label>
+                      <div className="relative">
+                        <Mail className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="email"
+                          value={regEmail}
+                          onChange={(e) => setRegEmail(e.target.value)}
+                          placeholder="user@pos.com"
+                          className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      {isKh ? 'ពាក្យសម្ងាត់ (Password) *' : 'Password *'}
+                    </label>
+                    <div className="relative">
+                      <KeyRound className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        required
+                        value={regPassword}
+                        onChange={(e) => setRegPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full pl-10 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 font-medium"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-md shadow-indigo-200 transition-all cursor-pointer disabled:opacity-50 mt-2"
+                  >
+                    {loading ? (
+                      <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <UserPlus className="w-4 h-4" />
+                        {isKh ? 'បង្កើតគណនី និងចូលប្រព័ន្ធ' : 'Create Account & Enter'}
+                      </>
+                    )}
+                  </button>
+                </form>
+              )}
+
+              <p className="text-[11px] text-center text-slate-400 mt-4">
+                {isKh ? 'ទិន្នន័យទាំងអស់ត្រូវបានការពារ និងរក្សាទុកលើ Firestore Cloud' : 'All accounts synced securely via Google Cloud Firestore.'}
+              </p>
+            </div>
+          </div>
+
+        </main>
+
+        {/* Footer */}
+        <footer className="px-6 lg:px-12 py-4 border-t border-white/10 text-center text-xs text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-2 z-10">
+          <p>© 2026 MINI MART POS Point of Sale & Retail Management. All rights reserved.</p>
+        </footer>
+      </div>
     </div>
   );
 };
