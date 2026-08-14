@@ -756,6 +756,18 @@ export default function App() {
         settings={settings}
         language={language}
       />
+
+      {/* User Profile & Photo Upload Modal */}
+      {isProfileModalOpen && currentUser && (
+        <UserProfileModal
+          isOpen={isProfileModalOpen}
+          onClose={() => setIsProfileModalOpen(false)}
+          currentUser={currentUser}
+          onUpdateUser={handleUpdateCurrentUser}
+          onUserUpdated={handleUpdateCurrentUser}
+          language={language}
+        />
+      )}
     </div>
   );
 }

@@ -167,8 +167,53 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </nav>
       </div>
 
-      {/* Bottom Status Info */}
-      <div className="p-3 border-t border-slate-100 bg-slate-50/50">
+      {/* Bottom Status & User Profile Card */}
+      <div className="border-t border-slate-100 bg-slate-50/70 p-3 space-y-2.5">
+        {currentUser && (
+          <div 
+            onClick={() => {
+              if (onOpenProfileModal) {
+                onOpenProfileModal();
+                if (onCloseMobile) onCloseMobile();
+              }
+            }}
+            className="flex items-center justify-between p-2 rounded-2xl bg-white hover:bg-indigo-50/70 border border-slate-200/70 shadow-2xs cursor-pointer transition-all group"
+            title={isKh ? "ចុចដើម្បីកែប្រែ Profile & រូបថត" : "Click to edit Profile & Photo"}
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <img
+                src={currentUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80'}
+                alt={currentUser.fullName}
+                className="w-9 h-9 rounded-xl object-cover ring-2 ring-indigo-100 group-hover:ring-indigo-300 shrink-0 transition-all"
+              />
+              <div className="min-w-0">
+                <div className="text-xs font-bold text-slate-800 group-hover:text-indigo-600 truncate">
+                  {currentUser.fullName}
+                </div>
+                <div className="text-[10px] text-slate-400 font-mono flex items-center gap-1">
+                  <span>@{currentUser.username}</span>
+                  <span>•</span>
+                  <span className="uppercase text-[9px] font-bold text-indigo-600">{currentUser.role}</span>
+                </div>
+              </div>
+            </div>
+
+            {onLogout && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onLogout();
+                }}
+                title={isKh ? "ចាកចេញពីគណនី" : "Logout"}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        )}
+
         <div className="flex items-center justify-between px-1 text-[11px] text-slate-400">
           <div className="flex items-center gap-1">
             <HelpCircle className="w-3.5 h-3.5" />
