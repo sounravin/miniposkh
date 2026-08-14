@@ -91,6 +91,12 @@ export interface ShopSettings {
   enableSound: boolean;
   receiptFooterText: string;
   language: 'en' | 'kh';
+  // KHQR Shop & POS Configuration
+  khqrImage?: string; // Uploaded KHQR QR image (base64 data URL)
+  khqrMerchantName?: string; // Store / Merchant Name on KHQR
+  khqrAccountName?: string; // Account Holder Name (e.g. SOUN RAVIN)
+  khqrAccountNumber?: string; // Bank Account No. / Bakong ID (e.g. 001 234 567 ABA)
+  khqrBankName?: string; // Bank Name (e.g. ABA Bank, ACLEDA, Bakong, Wing)
 }
 
 export type UserRole = 'admin' | 'cashier' | 'manager';
@@ -108,6 +114,12 @@ export interface User {
   avatar?: string;
   createdAt: string;
   lastLogin?: string;
+  // Per-user custom KHQR overrides if applicable
+  khqrImage?: string;
+  khqrMerchantName?: string;
+  khqrAccountName?: string;
+  khqrAccountNumber?: string;
+  khqrBankName?: string;
 }
 
 export interface ActivityLog {

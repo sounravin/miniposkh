@@ -282,34 +282,6 @@ export const Header: React.FC<HeaderProps> = ({
           <span className="hidden sm:inline">{isKh ? "ស្កេនបាកូដ" : "Scan Barcode"}</span>
         </button>
 
-        {/* Customer Self-Order Share Menu Button */}
-        {onOpenCustomerMenuShare && (
-          <button
-            id="header-share-customer-menu-btn"
-            onClick={onOpenCustomerMenuShare}
-            title={isKh ? "ចែករំលែក Link ឬ QR Code ម៉ឺនុយទៅកាន់អតិថិជន" : "Share Online Menu Link & QR"}
-            className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 active:bg-emerald-200 rounded-xl border border-emerald-100 transition-colors cursor-pointer shrink-0"
-          >
-            <Globe className="w-4 h-4 text-emerald-600" />
-            <span className="hidden md:inline">{isKh ? "Link ម៉ឺនុយអតិថិជន" : "Customer Menu"}</span>
-          </button>
-        )}
-
-        {/* Incoming Online Orders Live Trigger */}
-        {pendingOnlineOrdersCount > 0 && onOpenIncomingOnlineOrders && (
-          <button
-            onClick={onOpenIncomingOnlineOrders}
-            title={isKh ? "ការកុម្ម៉ង់អនឡាញថ្មីៗពីអតិថិជន" : "Incoming Online Orders"}
-            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 active:bg-rose-200 rounded-xl border border-rose-200 transition-colors cursor-pointer shrink-0 animate-pulse"
-          >
-            <ShoppingCart className="w-4 h-4 text-rose-600" />
-            <span className="hidden sm:inline">{isKh ? "កុម្ម៉ង់អនឡាញ" : "Online Orders"}</span>
-            <span className="bg-rose-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-mono font-black">
-              {pendingOnlineOrdersCount}
-            </span>
-          </button>
-        )}
-
         {/* Add Product Shortcut */}
         <button
           id="header-add-product-btn"

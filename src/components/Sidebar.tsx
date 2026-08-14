@@ -53,7 +53,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const isKh = language === 'kh';
 
-  const navItems = [
+  const navItems: Array<{
+    id: ActiveView;
+    label: string;
+    icon: React.ComponentType<{ className?: string }>;
+    badge: string | number | null;
+    badgeColor?: string;
+  }> = [
     {
       id: 'pos' as ActiveView,
       label: isKh ? 'ផ្ទាំងលក់ POS' : 'Overview / POS',
@@ -77,13 +83,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
       label: isKh ? 'បញ្ជីលក់ & វិក្កយបត្រ' : 'Sales Orders',
       icon: ShoppingCart,
       badge: ordersCount > 0 ? ordersCount : null
-    },
-    {
-      id: 'customer_menu_preview' as ActiveView,
-      label: isKh ? 'ម៉ឺនុយកុម្ម៉ង់អតិថិជន' : 'Customer Online Menu',
-      icon: Globe,
-      badge: isKh ? 'LIVE' : 'LIVE',
-      badgeColor: 'bg-emerald-100 text-emerald-800'
     },
     {
       id: 'income_reports' as ActiveView,

@@ -1,5 +1,23 @@
-import React from 'react';
-import { Settings, Save, RotateCcw, Volume2, DollarSign, Store, Percent, Image, User as UserIcon, LogOut, ShieldCheck } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { 
+  Settings, 
+  Save, 
+  RotateCcw, 
+  Volume2, 
+  DollarSign, 
+  Store, 
+  Percent, 
+  Image, 
+  User as UserIcon, 
+  LogOut, 
+  ShieldCheck,
+  QrCode,
+  Upload,
+  Trash2,
+  Check,
+  CreditCard,
+  Building2
+} from 'lucide-react';
 import { ShopSettings, User } from '../types';
 import { sounds } from '../utils/audio';
 import { Logo } from './Logo';
@@ -24,12 +42,53 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({
   onOpenProfileModal
 }) => {
   const isKh = language === 'kh';
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [saveSuccessNotice, setSaveSuccessNotice] = useState(false);
 
   const handleChange = <K extends keyof ShopSettings>(key: K, value: ShopSettings[K]) => {
     onUpdateSettings({
       ...settings,
       [key]: value
     });
+  };
+
+  const handleKhqrImageUpload = (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      alert(isKh ? 'សូមជ្រើសរើសឯកសាររូបភាពប៉ុណ្ណោះ (PNG, JPG, WebP)!' : 'Please select an image file (PNG, JPG, WebP)!');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64Data = e.target?.result as string;
+      if (base64Data) {
+        handleChange('khqrImage', base64Data);
+        setSaveSuccessNotice(true);
+        setTimeout(() => setSaveSuccessNotice(false), 2500);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleKhqrImageUpload(file);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      handleKhqrImageUpload(file);
+    }
+  };
+
+  const handleRemoveKhqrImage = () => {
+    handleChange('khqrImage', '');
   };
 
   return (
@@ -41,7 +100,7 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({
           <span>{isKh ? 'ការកំណត់ប្រព័ន្ធ (System Settings)' : 'Shop & POS Configuration'}</span>
         </h2>
         <p className="text-xs text-slate-400 mt-0.5">
-          {isKh ? 'កែប្រែព័ត៌មានហាង អត្រាប្តូរប្រាក់ ពន្ធ និងសំឡេង' : 'Configure store identity, tax, exchange rates, and audio effects'}
+          {isKh ? 'កែប្រែព័ត៌មានហាង កំណត់ KHQR ទទួលប្រាក់ អត្រាប្តូរប្រាក់ ពន្ធ និងសំឡេង' : 'Configure store identity, KHQR payment receiver, tax, exchange rates, and audio effects'}
         </p>
       </div>
 
@@ -107,6 +166,196 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({
               onChange={(e) => handleChange('phone', e.target.value)}
               className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
+          </div>
+        </div>
+      </div>
+
+      {/* KHQR Shop & POS Payment Configuration Card */}
+      <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-2xs space-y-5">
+        <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-lg bg-rose-50 text-rose-600">
+              <QrCode className="w-4 h-4" />
+            </div>
+            <div>
+              <h4 className="font-bold text-sm text-slate-800">
+                {isKh ? 'ការកំណត់ KHQR ទទួលប្រាក់ (KHQR & POS Payment)' : 'KHQR Shop & POS Payment Configuration'}
+              </h4>
+              <p className="text-[11px] text-slate-400">
+                {isKh ? 'រូបភាព QR នេះនឹងបង្ហាញនៅក្នុងផ្ទាំង Complete Payment នៅពេលគិតលុយ' : 'Upload your custom KHQR image to appear in the Complete Payment modal'}
+              </p>
+            </div>
+          </div>
+          <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-200">
+            Bakong KHQR
+          </span>
+        </div>
+
+        {/* Upload Box and Live Preview */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
+          {/* Dropzone & Upload Action */}
+          <div className="md:col-span-7 space-y-3">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png, image/jpeg, image/webp"
+              onChange={handleFileChange}
+              className="hidden"
+            />
+
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDragOver(true);
+              }}
+              onDragLeave={() => setIsDragOver(false)}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              className={`p-5 rounded-2xl border-2 border-dashed transition-all cursor-pointer text-center flex flex-col items-center justify-center gap-2.5 ${
+                isDragOver
+                  ? 'border-rose-500 bg-rose-50/60 scale-[1.01]'
+                  : 'border-slate-200 hover:border-rose-400 hover:bg-slate-50/80 bg-slate-50/40'
+              }`}
+            >
+              <div className="p-3 rounded-full bg-rose-100 text-rose-600 shadow-2xs">
+                <Upload className="w-6 h-6" />
+              </div>
+
+              <div>
+                <span className="text-xs font-bold text-slate-800 block">
+                  {isKh ? 'ចុចទីនេះដើម្បី Upload រូបភាព KHQR' : 'Click to Upload KHQR Code / Stand'}
+                </span>
+                <span className="text-[11px] text-slate-400 block mt-0.5">
+                  {isKh ? 'ឬអូសទម្លាក់រូបភាព (PNG, JPG, WebP)' : 'or Drag & Drop image file here'}
+                </span>
+              </div>
+
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white rounded-lg border border-slate-200 text-[11px] font-bold text-rose-600 shadow-2xs">
+                <QrCode className="w-3.5 h-3.5" />
+                <span>{isKh ? 'ជ្រើសរើសរូបពីទូរស័ព្ទ / កុំព្យូទ័រ' : 'Browse Gallery / Files'}</span>
+              </div>
+            </div>
+
+            {saveSuccessNotice && (
+              <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-bold text-emerald-800 flex items-center gap-2 animate-in fade-in">
+                <Check className="w-4 h-4 text-emerald-600" />
+                <span>{isKh ? 'បានរក្សាទុករូបភាព KHQR ដោយជោគជ័យ!' : 'KHQR image saved successfully!'}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Live KHQR Card Preview */}
+          <div className="md:col-span-5 bg-gradient-to-b from-slate-50 to-rose-50/30 p-4 rounded-2xl border border-slate-200/80 flex flex-col items-center text-center">
+            <span className="text-[10px] font-black tracking-wider text-rose-600 uppercase mb-2">
+              {isKh ? 'គំរូក្នុងផ្ទាំងគិតប្រាក់' : 'Payment Modal Preview'}
+            </span>
+
+            <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-200/80 relative group">
+              {settings.khqrImage ? (
+                <>
+                  <img
+                    src={settings.khqrImage}
+                    alt="Store KHQR"
+                    className="w-36 h-36 object-contain rounded-lg"
+                  />
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemoveKhqrImage();
+                    }}
+                    title={isKh ? 'លុបរូបភាពចេញ' : 'Remove QR Image'}
+                    className="absolute top-1.5 right-1.5 p-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg opacity-90 shadow-md transition-all cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </>
+              ) : (
+                <div className="w-36 h-36 bg-slate-50 border border-slate-100 rounded-lg flex flex-col items-center justify-center p-2 text-slate-400">
+                  <QrCode className="w-12 h-12 text-slate-300 mb-1" />
+                  <span className="text-[10px] font-semibold text-slate-400">
+                    {isKh ? 'មិនទាន់ Upload' : 'No custom QR'}
+                  </span>
+                  <span className="text-[9px] text-slate-400">(Dynamic QR Active)</span>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-2.5 space-y-0.5">
+              <div className="text-xs font-bold text-slate-800 truncate max-w-[200px]">
+                {settings.khqrMerchantName || settings.shopNameKh || settings.shopName || 'MINI MART POS'}
+              </div>
+              <div className="text-[11px] text-slate-500 font-mono">
+                {settings.khqrAccountName || currentUser?.fullName || 'STORE ACCOUNT'}
+              </div>
+              {settings.khqrAccountNumber && (
+                <div className="text-[10px] text-rose-600 font-mono font-bold bg-rose-50 px-2 py-0.5 rounded-full inline-block mt-0.5">
+                  {settings.khqrAccountNumber}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Bank & Merchant Account Details */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+          <div>
+            <label className="text-xs font-semibold text-slate-700 block mb-1">
+              {isKh ? 'ឈ្មោះហាង / អាជីវកម្មលើ KHQR' : 'Merchant / Shop Name on KHQR'}
+            </label>
+            <input
+              type="text"
+              placeholder={settings.shopNameKh || settings.shopName || 'MINI MART POS'}
+              value={settings.khqrMerchantName || ''}
+              onChange={(e) => handleChange('khqrMerchantName', e.target.value)}
+              className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-slate-700 block mb-1">
+              {isKh ? 'ឈ្មោះម្ចាស់គណនី (Account Name)' : 'Account Holder Name'}
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. SOUN RAVIN"
+              value={settings.khqrAccountName || ''}
+              onChange={(e) => handleChange('khqrAccountName', e.target.value.toUpperCase())}
+              className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 font-mono uppercase"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-slate-700 block mb-1">
+              {isKh ? 'លេខគណនីធនាគារ / Bakong ID' : 'Bank Account No. / Bakong ID'}
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. 001 234 567 (ABA) / sounravin@aba"
+              value={settings.khqrAccountNumber || ''}
+              onChange={(e) => handleChange('khqrAccountNumber', e.target.value)}
+              className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 font-mono"
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-semibold text-slate-700 block mb-1">
+              {isKh ? 'ធនាគារ (Bank Name)' : 'Bank / Partner'}
+            </label>
+            <select
+              value={settings.khqrBankName || 'ABA Bank'}
+              onChange={(e) => handleChange('khqrBankName', e.target.value)}
+              className="w-full text-xs font-semibold p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 bg-white"
+            >
+              <option value="ABA Bank">ABA Bank (KHQR)</option>
+              <option value="ACLEDA Bank">ACLEDA Bank (KHQR)</option>
+              <option value="Bakong">Bakong (National Bank of Cambodia)</option>
+              <option value="Canadia Bank">Canadia Bank</option>
+              <option value="Wing Bank">Wing Bank</option>
+              <option value="Sathapana Bank">Sathapana Bank</option>
+              <option value="Chip Mong Bank">Chip Mong Bank</option>
+              <option value="Prince Bank">Prince Bank</option>
+            </select>
           </div>
         </div>
       </div>

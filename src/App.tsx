@@ -1062,6 +1062,8 @@ export default function App() {
           khrRate={settings.khrExchangeRate}
           language={language}
           onOrderCompleted={handleOrderCompleted}
+          settings={settings}
+          currentUser={currentUser}
         />
       )}
 

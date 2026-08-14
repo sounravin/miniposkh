@@ -171,20 +171,20 @@ export const CustomerMenuShareModal: React.FC<CustomerMenuShareModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
-      <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/70 backdrop-blur-xs animate-in fade-in overflow-hidden">
+      <div className="w-full max-w-lg max-h-[94vh] sm:max-h-[88vh] bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
         
         {/* Header */}
-        <div className="p-4 sm:p-5 bg-gradient-to-r from-indigo-700 via-indigo-800 to-slate-900 text-white flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-white/15 backdrop-blur-xs text-amber-300">
-              <QrCode className="w-6 h-6" />
+        <div className="p-3.5 sm:p-5 bg-gradient-to-r from-indigo-700 via-indigo-800 to-slate-900 text-white flex items-center justify-between shrink-0 shadow-sm">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-white/15 backdrop-blur-xs text-amber-300 shrink-0">
+              <QrCode className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
-            <div>
-              <h3 className="font-black text-base sm:text-lg tracking-tight">
-                {isKh ? 'តំណភ្ជាប់ម៉ឺនុយអតិថិជន (Customer Menu Link)' : 'Customer Self-Order Link & QR'}
+            <div className="min-w-0">
+              <h3 className="font-black text-sm sm:text-lg tracking-tight truncate">
+                {isKh ? 'តំណភ្ជាប់ម៉ឺនុយអតិថិជន' : 'Customer Menu Link & QR'}
               </h3>
-              <p className="text-xs text-indigo-200 font-medium">
+              <p className="text-[11px] sm:text-xs text-indigo-200 font-medium truncate">
                 {isKh ? 'ចែករំលែក Link ឬ QR Code ទៅកាន់អតិថិជន' : 'Share QR code or link for self-ordering'}
               </p>
             </div>
@@ -192,41 +192,41 @@ export const CustomerMenuShareModal: React.FC<CustomerMenuShareModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-1.5 rounded-xl text-white/70 hover:text-white hover:bg-white/15 transition-colors cursor-pointer"
+            className="p-1.5 rounded-xl text-white/70 hover:text-white hover:bg-white/15 transition-colors cursor-pointer shrink-0 ml-2"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Modal Content */}
-        <div className="p-4 sm:p-6 space-y-5 max-h-[80vh] overflow-y-auto">
+        {/* Modal Content (Scrollable & Optimized for iPhone) */}
+        <div className="p-3.5 sm:p-6 space-y-3.5 sm:space-y-5 flex-1 overflow-y-auto overscroll-contain">
           
           {/* Main QR Card */}
-          <div className="p-5 bg-slate-50 rounded-3xl border border-slate-200/80 flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
-            <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-200/70 shrink-0">
+          <div className="p-3.5 sm:p-5 bg-slate-50 rounded-2xl sm:rounded-3xl border border-slate-200/80 flex flex-col sm:flex-row items-center gap-3.5 sm:gap-5 text-center sm:text-left">
+            <div className="bg-white p-2.5 sm:p-3 rounded-2xl shadow-xs border border-slate-200/70 shrink-0">
               {qrDataUrl ? (
                 <img
                   src={qrDataUrl}
                   alt="Customer Menu QR Code"
-                  className="w-40 h-40 sm:w-44 sm:h-44 object-contain rounded-lg"
+                  className="w-32 h-32 sm:w-40 sm:h-40 object-contain rounded-lg mx-auto"
                 />
               ) : (
-                <div className="w-40 h-40 flex items-center justify-center text-slate-400">
+                <div className="w-32 h-32 sm:w-40 sm:h-40 flex items-center justify-center text-slate-400">
                   <span className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
                 </div>
               )}
             </div>
 
-            <div className="space-y-3 flex-1">
+            <div className="space-y-2.5 sm:space-y-3 flex-1 min-w-0">
               <div className="space-y-1">
                 <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold uppercase tracking-wide">
                   <Sparkles className="w-3 h-3 text-emerald-600" />
                   {isKh ? 'ដំណើរការ Live 24/7' : 'Live Self-Order'}
                 </span>
-                <h4 className="font-extrabold text-sm sm:text-base text-slate-900">
+                <h4 className="font-extrabold text-xs sm:text-base text-slate-900">
                   {isKh ? 'ស្កេនកុម្ម៉ង់ទំនិញភ្លាមៗ' : 'Scan to View & Order'}
                 </h4>
-                <p className="text-xs text-slate-500 leading-relaxed">
+                <p className="text-[11px] sm:text-xs text-slate-500 leading-relaxed">
                   {isKh 
                     ? 'អតិថិជនអាចស្កេន QR នេះដោយទូរស័ព្ទដៃ ដើម្បីជ្រើសរើសទំនិញ និងផ្ញើចូលប្រព័ន្ធគិតលុយរបស់លោកអ្នកដោយផ្ទាល់។' 
                     : 'Customers scan this QR code with their mobile phone to browse all products and place orders directly into POS.'}
@@ -234,7 +234,7 @@ export const CustomerMenuShareModal: React.FC<CustomerMenuShareModalProps> = ({
               </div>
 
               {/* Action Buttons for QR */}
-              <div className="flex flex-wrap items-center gap-2 pt-1 justify-center sm:justify-start">
+              <div className="flex flex-wrap items-center gap-2 pt-0.5 justify-center sm:justify-start">
                 <button
                   type="button"
                   onClick={handleDownloadQr}
@@ -257,18 +257,18 @@ export const CustomerMenuShareModal: React.FC<CustomerMenuShareModalProps> = ({
           </div>
 
           {/* 1-Click Copy Direct Link Box */}
-          <div className="space-y-2">
-            <label className="block text-xs font-bold text-slate-700">
+          <div className="space-y-1.5">
+            <label className="block text-[11px] sm:text-xs font-bold text-slate-700">
               {isKh ? 'តំណភ្ជាប់ផ្ទាល់ (Direct Customer URL)' : 'Direct Customer Ordering Link'}
             </label>
             <div className="flex items-center gap-2">
-              <div className="flex-1 bg-slate-100 border border-slate-200 px-3 py-2.5 rounded-xl text-xs font-mono text-slate-700 truncate select-all">
+              <div className="flex-1 bg-slate-100 border border-slate-200 px-3 py-2 sm:py-2.5 rounded-xl text-[11px] sm:text-xs font-mono text-slate-700 truncate select-all">
                 {menuUrl}
               </div>
               <button
                 type="button"
                 onClick={handleCopyLink}
-                className={`px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer shrink-0 ${
+                className={`px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer shrink-0 ${
                   copied 
                     ? 'bg-emerald-600 text-white' 
                     : 'bg-indigo-600 hover:bg-indigo-700 text-white'
@@ -276,12 +276,12 @@ export const CustomerMenuShareModal: React.FC<CustomerMenuShareModalProps> = ({
               >
                 {copied ? (
                   <>
-                    <Check className="w-4 h-4" />
+                    <Check className="w-3.5 h-3.5" />
                     <span>{isKh ? 'បានចម្លង!' : 'Copied!'}</span>
                   </>
                 ) : (
                   <>
-                    <Copy className="w-4 h-4" />
+                    <Copy className="w-3.5 h-3.5" />
                     <span>{isKh ? 'ចម្លង Link' : 'Copy Link'}</span>
                   </>
                 )}
@@ -290,15 +290,15 @@ export const CustomerMenuShareModal: React.FC<CustomerMenuShareModalProps> = ({
           </div>
 
           {/* Social Share Buttons */}
-          <div className="space-y-2 pt-1">
-            <label className="block text-xs font-bold text-slate-600">
+          <div className="space-y-1.5 pt-0.5">
+            <label className="block text-[11px] sm:text-xs font-bold text-slate-600">
               {isKh ? 'ផ្ញើទៅកាន់អតិថិជនតាមបណ្តាញសង្គម' : 'Quick Share to Customers'}
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <button
                 type="button"
                 onClick={handleShareTelegram}
-                className="py-2.5 px-3 bg-[#229ED9]/10 hover:bg-[#229ED9]/20 text-[#229ED9] rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-[#229ED9]/20"
+                className="py-2 sm:py-2.5 px-3 bg-[#229ED9]/10 hover:bg-[#229ED9]/20 text-[#229ED9] rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-[#229ED9]/20"
               >
                 <Send className="w-3.5 h-3.5" />
                 <span>Telegram</span>
@@ -307,7 +307,7 @@ export const CustomerMenuShareModal: React.FC<CustomerMenuShareModalProps> = ({
               <button
                 type="button"
                 onClick={handleShareWhatsApp}
-                className="py-2.5 px-3 bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-[#25D366]/20"
+                className="py-2 sm:py-2.5 px-3 bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-[#25D366]/20"
               >
                 <MessageCircle className="w-3.5 h-3.5" />
                 <span>WhatsApp</span>
@@ -318,7 +318,7 @@ export const CustomerMenuShareModal: React.FC<CustomerMenuShareModalProps> = ({
                 onClick={() => {
                   window.open(menuUrl, '_blank');
                 }}
-                className="py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-slate-200"
+                className="py-2 sm:py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-slate-200"
               >
                 <ExternalLink className="w-3.5 h-3.5 text-indigo-600" />
                 <span>{isKh ? 'បើកផ្ទាំងថ្មី' : 'New Tab'}</span>
@@ -330,7 +330,7 @@ export const CustomerMenuShareModal: React.FC<CustomerMenuShareModalProps> = ({
                   onClose();
                   onOpenPreview();
                 }}
-                className="py-2.5 px-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-indigo-200"
+                className="py-2 sm:py-2.5 px-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-indigo-200"
               >
                 <Smartphone className="w-3.5 h-3.5" />
                 <span>{isKh ? 'មើលសាកល្បង' : 'In-App View'}</span>
@@ -339,7 +339,7 @@ export const CustomerMenuShareModal: React.FC<CustomerMenuShareModalProps> = ({
           </div>
 
           {/* Guide Tips */}
-          <div className="p-3 bg-amber-50/80 rounded-2xl border border-amber-200/70 text-xs text-amber-900 flex items-start gap-2.5">
+          <div className="p-3 bg-amber-50/80 rounded-2xl border border-amber-200/70 text-[11px] sm:text-xs text-amber-900 flex items-start gap-2.5">
             <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
             <div className="leading-relaxed">
               <strong className="font-bold">{isKh ? 'របៀបដំណើរការ:' : 'How it works:'}</strong>{' '}
@@ -350,14 +350,14 @@ export const CustomerMenuShareModal: React.FC<CustomerMenuShareModalProps> = ({
           </div>
         </div>
 
-        {/* Modal Footer */}
-        <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-2">
+        {/* Modal Footer with Safe Area Support for iPhone */}
+        <div className="p-3 sm:p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-2 shrink-0 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]">
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+            className="w-full sm:w-auto px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-xs"
           >
-            {isKh ? 'បិទ' : 'Close'}
+            {isKh ? 'យល់ព្រម / បិទ' : 'Done / Close'}
           </button>
         </div>
       </div>
