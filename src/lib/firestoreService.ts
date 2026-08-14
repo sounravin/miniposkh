@@ -3,6 +3,9 @@ import {
   usersCollection,
   productsCollection,
   ordersCollection,
+  expensesCollection,
+  customersCollection,
+  tablesCollection,
   settingsCollection,
   logsCollection,
   doc,
@@ -16,8 +19,8 @@ import {
   orderBy,
   limit
 } from './firebase';
-import { User, Product, Order, ShopSettings, ActivityLog } from '../types';
-import { INITIAL_PRODUCTS, INITIAL_SETTINGS, INITIAL_ORDERS } from '../data/initialData';
+import { User, Product, Order, Expense, Customer, TableInfo, ShopSettings, ActivityLog } from '../types';
+import { INITIAL_PRODUCTS, INITIAL_SETTINGS, INITIAL_ORDERS, INITIAL_EXPENSES, INITIAL_CUSTOMERS, INITIAL_TABLES } from '../data/initialData';
 
 // Pre-seeded Admin, Manager & Default Cashier
 export const DEFAULT_USERS: User[] = [
@@ -80,9 +83,7 @@ export async function initializeFirestoreDatabase(): Promise<void> {
       for (const u of DEFAULT_USERS) {
         await setDoc(doc(db, 'users', u.id), u);
       }
-      console.log('Seeded default users to Firestore');
     } else {
-      // Ensure admin exists
       const adminDoc = await getDoc(doc(db, 'users', 'user-admin'));
       if (!adminDoc.exists()) {
         await setDoc(doc(db, 'users', 'user-admin'), DEFAULT_USERS[0]);
@@ -95,21 +96,43 @@ export async function initializeFirestoreDatabase(): Promise<void> {
       for (const p of INITIAL_PRODUCTS) {
         await setDoc(doc(db, 'products', p.id), { ...p, userId: 'user-admin' });
       }
-      console.log('Seeded initial products to Firestore');
     }
 
     // 3. Seed Settings if empty
     const settingsDoc = await getDoc(doc(db, 'settings', 'general'));
     if (!settingsDoc.exists()) {
       await setDoc(doc(db, 'settings', 'general'), INITIAL_SETTINGS);
-      console.log('Seeded initial settings to Firestore');
     }
 
     // 4. Seed sample orders if empty
     const orderDocs = await getDocs(ordersCollection);
     if (orderDocs.empty && INITIAL_ORDERS.length > 0) {
-      for (const o of INITIAL_ORDERS.slice(0, 5)) {
+      for (const o of INITIAL_ORDERS) {
         await setDoc(doc(db, 'orders', o.id), { ...o, userId: 'user-admin' });
+      }
+    }
+
+    // 5. Seed expenses if empty
+    const expenseDocs = await getDocs(expensesCollection);
+    if (expenseDocs.empty && INITIAL_EXPENSES.length > 0) {
+      for (const e of INITIAL_EXPENSES) {
+        await setDoc(doc(db, 'expenses', e.id), { ...e, userId: 'user-admin' });
+      }
+    }
+
+    // 6. Seed customers if empty
+    const customerDocs = await getDocs(customersCollection);
+    if (customerDocs.empty && INITIAL_CUSTOMERS.length > 0) {
+      for (const c of INITIAL_CUSTOMERS) {
+        await setDoc(doc(db, 'customers', c.id), { ...c, userId: 'user-admin' });
+      }
+    }
+
+    // 7. Seed tables if empty
+    const tableDocs = await getDocs(tablesCollection);
+    if (tableDocs.empty && INITIAL_TABLES.length > 0) {
+      for (const t of INITIAL_TABLES) {
+        await setDoc(doc(db, 'tables', t.id), { ...t, userId: 'user-admin' });
       }
     }
   } catch (err) {
@@ -170,7 +193,7 @@ export function subscribeToProducts(callback: (products: Product[]) => void): ()
 // Subscribe to Orders
 export function subscribeToOrders(callback: (orders: Order[]) => void): () => void {
   try {
-    const q = query(ordersCollection, orderBy('createdAt', 'desc'), limit(100));
+    const q = query(ordersCollection, orderBy('createdAt', 'desc'), limit(150));
     const unsub = onSnapshot(q, (snapshot) => {
       if (snapshot.empty) {
         callback([]);
@@ -193,6 +216,82 @@ export function subscribeToOrders(callback: (orders: Order[]) => void): () => vo
   }
 }
 
+// Subscribe to Expenses
+export function subscribeToExpenses(callback: (expenses: Expense[]) => void): () => void {
+  try {
+    const q = query(expensesCollection, orderBy('date', 'desc'), limit(100));
+    const unsub = onSnapshot(q, (snapshot) => {
+      if (snapshot.empty) {
+        callback([]);
+        return;
+      }
+      const list: Expense[] = [];
+      snapshot.forEach((docSnap) => {
+        list.push(docSnap.data() as Expense);
+      });
+      callback(list);
+    }, (error) => {
+      console.warn('Firestore expenses subscription error:', error);
+      callback([]);
+    });
+    return unsub;
+  } catch (err) {
+    console.error('Failed to subscribe to expenses:', err);
+    callback([]);
+    return () => {};
+  }
+}
+
+// Subscribe to Customers
+export function subscribeToCustomers(callback: (customers: Customer[]) => void): () => void {
+  try {
+    const unsub = onSnapshot(customersCollection, (snapshot) => {
+      if (snapshot.empty) {
+        callback([]);
+        return;
+      }
+      const list: Customer[] = [];
+      snapshot.forEach((docSnap) => {
+        list.push(docSnap.data() as Customer);
+      });
+      callback(list);
+    }, (error) => {
+      console.warn('Firestore customers subscription error:', error);
+      callback([]);
+    });
+    return unsub;
+  } catch (err) {
+    console.error('Failed to subscribe to customers:', err);
+    callback([]);
+    return () => {};
+  }
+}
+
+// Subscribe to Tables
+export function subscribeToTables(callback: (tables: TableInfo[]) => void): () => void {
+  try {
+    const unsub = onSnapshot(tablesCollection, (snapshot) => {
+      if (snapshot.empty) {
+        callback([]);
+        return;
+      }
+      const list: TableInfo[] = [];
+      snapshot.forEach((docSnap) => {
+        list.push(docSnap.data() as TableInfo);
+      });
+      callback(list);
+    }, (error) => {
+      console.warn('Firestore tables subscription error:', error);
+      callback([]);
+    });
+    return unsub;
+  } catch (err) {
+    console.error('Failed to subscribe to tables:', err);
+    callback([]);
+    return () => {};
+  }
+}
+
 // Subscribe to Registered Users
 export function subscribeToUsers(callback: (users: User[]) => void): () => void {
   try {
@@ -205,7 +304,6 @@ export function subscribeToUsers(callback: (users: User[]) => void): () => void 
       snapshot.forEach((docSnap) => {
         list.push(docSnap.data() as User);
       });
-      // Sort so admin is first, then newest
       list.sort((a, b) => (a.role === 'admin' ? -1 : b.role === 'admin' ? 1 : 0));
       callback(list);
     }, (error) => {
@@ -274,6 +372,41 @@ export async function deleteProductFromFirestore(productId: string): Promise<voi
 // Save Order
 export async function saveOrderToFirestore(order: Order): Promise<void> {
   await setDoc(doc(db, 'orders', order.id), order);
+}
+
+// Update Order Status
+export async function updateOrderStatusInFirestore(orderId: string, status: Order['status']): Promise<void> {
+  await updateDoc(doc(db, 'orders', orderId), { status });
+}
+
+// Delete Order
+export async function deleteOrderFromFirestore(orderId: string): Promise<void> {
+  await deleteDoc(doc(db, 'orders', orderId));
+}
+
+// Save Expense
+export async function saveExpenseToFirestore(expense: Expense): Promise<void> {
+  await setDoc(doc(db, 'expenses', expense.id), expense);
+}
+
+// Delete Expense
+export async function deleteExpenseFromFirestore(expenseId: string): Promise<void> {
+  await deleteDoc(doc(db, 'expenses', expenseId));
+}
+
+// Save Customer
+export async function saveCustomerToFirestore(customer: Customer): Promise<void> {
+  await setDoc(doc(db, 'customers', customer.id), customer);
+}
+
+// Delete Customer
+export async function deleteCustomerFromFirestore(customerId: string): Promise<void> {
+  await deleteDoc(doc(db, 'customers', customerId));
+}
+
+// Save Table
+export async function saveTableToFirestore(table: TableInfo): Promise<void> {
+  await setDoc(doc(db, 'tables', table.id), table);
 }
 
 // Save Settings

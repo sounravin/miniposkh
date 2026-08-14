@@ -117,10 +117,10 @@ export const PosView: React.FC<PosViewProps> = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col min-w-0">
+    <div className="flex-1 flex flex-col w-full min-w-0 max-w-full">
       {/* Category Pills Header */}
-      <div className="flex items-center justify-between gap-2.5 sm:gap-3 mb-3 sm:mb-4 flex-wrap">
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full no-scrollbar touch-scroll">
+      <div className="flex items-center justify-between gap-2 mb-3 w-full max-w-full">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-[calc(100%-80px)] sm:max-w-none no-scrollbar touch-scroll flex-1">
           {categories.map((cat) => {
             const isSelected = selectedCategory === cat;
             return (
@@ -131,7 +131,7 @@ export const PosView: React.FC<PosViewProps> = ({
                   setSelectedCategory(cat);
                   setDropdownCategory('All');
                 }}
-                className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                className={`px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 ${
                   isSelected
                     ? 'bg-indigo-600 text-white shadow-xs'
                     : 'bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-900 border border-slate-100'
@@ -145,18 +145,18 @@ export const PosView: React.FC<PosViewProps> = ({
         </div>
 
         {/* Filter Trigger Button */}
-        <div className="relative">
+        <div className="relative shrink-0">
           <button
             id="pos-filter-btn"
             onClick={() => setShowFilterModal(!showFilterModal)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+            className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
               showFilterModal || inStockOnly || sortBy !== 'default'
                 ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
                 : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
             }`}
           >
             <Filter className="w-3.5 h-3.5" />
-            <span>{isKh ? 'តម្រង (Filter)' : 'Filter'}</span>
+            <span className="hidden sm:inline">{isKh ? 'តម្រង' : 'Filter'}</span>
             {(inStockOnly || sortBy !== 'default') && (
               <span className="w-1.5 h-1.5 rounded-full bg-indigo-600"></span>
             )}
@@ -218,16 +218,16 @@ export const PosView: React.FC<PosViewProps> = ({
       </div>
 
       {/* Sub-search bar & Categories dropdown */}
-      <div className="flex items-center gap-3 mb-5">
-        <div className="relative flex-1">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 mb-4 sm:mb-5 w-full max-w-full">
+        <div className="relative flex-1 min-w-0">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             id="pos-menu-search-input"
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={isKh ? "ស្វែងរកទំនិញ, Skin Care, ស្រា, អាហារ ឬស្កេនបាកូដ..." : "Search products, skin care, wine, food or scan barcode..."}
-            className="w-full bg-white text-xs sm:text-sm text-slate-800 placeholder-slate-400 rounded-xl pl-9 pr-10 py-2.5 border border-slate-100/90 shadow-2xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+            placeholder={isKh ? "ស្វែងរកទំនិញ, Skin Care, ស្រា..." : "Search products, drinks, food..."}
+            className="w-full bg-white text-xs sm:text-sm text-slate-800 placeholder-slate-400 rounded-xl pl-9 pr-10 py-2 sm:py-2.5 border border-slate-100/90 shadow-2xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
           />
           <button
             onClick={openBarcodeScanner}
@@ -239,7 +239,7 @@ export const PosView: React.FC<PosViewProps> = ({
         </div>
 
         {/* Category selector dropdown */}
-        <div className="relative shrink-0">
+        <div className="relative shrink-0 w-full sm:w-auto">
           <select
             id="pos-category-select-dropdown"
             value={dropdownCategory}
@@ -247,7 +247,7 @@ export const PosView: React.FC<PosViewProps> = ({
               setDropdownCategory(e.target.value);
               setSelectedCategory('All Items');
             }}
-            className="appearance-none bg-white text-xs sm:text-sm font-medium text-slate-700 pl-3.5 pr-8 py-2.5 rounded-xl border border-slate-100/90 shadow-2xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer"
+            className="w-full sm:w-auto appearance-none bg-white text-xs sm:text-sm font-medium text-slate-700 pl-3.5 pr-8 py-2 sm:py-2.5 rounded-xl border border-slate-100/90 shadow-2xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer"
           >
             <option value="All">{isKh ? 'គ្រប់ប្រភេទទាំងអស់' : 'All Categories'}</option>
             {INITIAL_CATEGORIES.filter(c => c !== 'All Items' && c !== 'Popular').map(c => (

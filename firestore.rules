@@ -11,6 +11,15 @@ service cloud.firestore {
     match /orders/{orderId} {
       allow read, write: if true;
     }
+    match /expenses/{expenseId} {
+      allow read, write: if true;
+    }
+    match /customers/{customerId} {
+      allow read, write: if true;
+    }
+    match /tables/{tableId} {
+      allow read, write: if true;
+    }
     match /settings/{settingId} {
       allow read, write: if true;
     }

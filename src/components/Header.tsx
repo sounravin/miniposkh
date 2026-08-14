@@ -109,26 +109,26 @@ export const Header: React.FC<HeaderProps> = ({
   });
 
   return (
-    <header className="bg-white border-b border-slate-100 px-3.5 sm:px-6 py-2.5 sm:py-3.5 pt-safe flex items-center justify-between sticky top-0 z-20">
-      <div className="flex items-center gap-2.5 sm:gap-4 flex-1 max-w-2xl min-w-0">
+    <header className="bg-white border-b border-slate-100 px-3 sm:px-6 py-2 sm:py-3.5 pt-safe flex items-center justify-between sticky top-0 z-20 w-full max-w-full overflow-hidden">
+      <div className="flex items-center gap-2 sm:gap-4 flex-1 max-w-2xl min-w-0">
         {/* Mobile menu trigger & Mobile Brand Logo */}
-        <div className="flex items-center gap-1.5 sm:gap-2 md:hidden shrink-0">
+        <div className="flex items-center gap-1 sm:gap-2 md:hidden shrink-0">
           {toggleMobileSidebar && (
             <button 
               onClick={toggleMobileSidebar}
-              className="p-2 rounded-xl text-slate-600 hover:bg-slate-100 active:bg-slate-200 cursor-pointer min-w-[40px] min-h-[40px] flex items-center justify-center"
+              className="p-1.5 sm:p-2 rounded-xl text-slate-600 hover:bg-slate-100 active:bg-slate-200 cursor-pointer min-w-[36px] min-h-[36px] flex items-center justify-center"
               aria-label="Toggle Navigation Menu"
             >
               <Menu className="w-5 h-5" />
             </button>
           )}
-          <Logo size={30} variant="badge" />
+          <Logo size={28} variant="badge" />
         </div>
 
         {/* Global Search Bar */}
-        <div className="relative flex-1 max-w-md">
+        <div className="relative flex-1 min-w-0 max-w-xs sm:max-w-md">
           <div className="relative flex items-center">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-2.5 sm:left-3 pointer-events-none" />
             <input
               ref={searchInputRef}
               id="header-global-search"
@@ -139,13 +139,13 @@ export const Header: React.FC<HeaderProps> = ({
                 setIsSearchOpen(true);
               }}
               onFocus={() => setIsSearchOpen(true)}
-              placeholder={isKh ? "ស្វែងរកទំនិញ... (Ctrl+K)" : "Search product... (Ctrl+K)"}
-              className="w-full bg-slate-50 hover:bg-slate-100/80 focus:bg-white text-xs sm:text-sm text-slate-800 placeholder-slate-400 rounded-xl pl-8 sm:pl-9 pr-8 sm:pr-14 py-2 border border-slate-200/80 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+              placeholder={isKh ? "ស្វែងរកទំនិញ..." : "Search product..."}
+              className="w-full bg-slate-50 hover:bg-slate-100/80 focus:bg-white text-xs sm:text-sm text-slate-800 placeholder-slate-400 rounded-xl pl-7 sm:pl-9 pr-7 sm:pr-14 py-1.5 sm:py-2 border border-slate-200/80 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
             />
             {searchQuery ? (
               <button 
                 onClick={() => { setSearchQuery(''); setIsSearchOpen(false); }}
-                className="absolute right-2.5 p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
+                className="absolute right-2 p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
               </button>

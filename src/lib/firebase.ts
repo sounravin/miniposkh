@@ -29,6 +29,9 @@ export const db: Firestore = firebaseConfig.firestoreDatabaseId
 export const usersCollection = collection(db, 'users');
 export const productsCollection = collection(db, 'products');
 export const ordersCollection = collection(db, 'orders');
+export const expensesCollection = collection(db, 'expenses');
+export const customersCollection = collection(db, 'customers');
+export const tablesCollection = collection(db, 'tables');
 export const settingsCollection = collection(db, 'settings');
 export const logsCollection = collection(db, 'activity_logs');
 

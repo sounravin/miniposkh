@@ -45,19 +45,75 @@
       "type": "object",
       "properties": {
         "id": { "type": "string" },
+        "userId": { "type": "string" },
         "orderNumber": { "type": "string" },
         "items": { "type": "array" },
         "subtotal": { "type": "number" },
         "discount": { "type": "number" },
+        "discountType": { "type": "string" },
         "tax": { "type": "number" },
+        "taxRate": { "type": "number" },
         "total": { "type": "number" },
+        "totalKhr": { "type": "number" },
         "paymentMethod": { "type": "string" },
+        "amountPaid": { "type": "number" },
+        "changeDue": { "type": "number" },
+        "tableNumber": { "type": "string" },
+        "customerName": { "type": "string" },
+        "customerPhone": { "type": "string" },
         "cashierName": { "type": "string" },
-        "cashierId": { "type": "string" },
         "status": { "type": "string" },
-        "createdAt": { "type": "string" }
+        "createdAt": { "type": "string" },
+        "note": { "type": "string" }
       },
       "required": ["orderNumber", "items", "total", "paymentMethod"]
+    },
+    "expenses": {
+      "title": "Expense",
+      "description": "Store operational expenses and restock costs",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "amount": { "type": "number" },
+        "date": { "type": "string" },
+        "paidBy": { "type": "string" },
+        "notes": { "type": "string" }
+      },
+      "required": ["title", "amount", "category", "date"]
+    },
+    "customers": {
+      "title": "Customer",
+      "description": "Registered loyal store customers",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "totalOrders": { "type": "number" },
+        "totalSpent": { "type": "number" },
+        "points": { "type": "number" },
+        "lastVisit": { "type": "string" }
+      },
+      "required": ["name", "phone"]
+    },
+    "tables": {
+      "title": "TableInfo",
+      "description": "Store tables and counter info",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "seats": { "type": "number" },
+        "status": { "type": "string" },
+        "currentOrderId": { "type": "string" }
+      },
+      "required": ["name", "status"]
     },
     "settings": {
       "title": "Settings",

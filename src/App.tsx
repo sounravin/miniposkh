@@ -42,12 +42,22 @@ import {
   initializeFirestoreDatabase,
   subscribeToProducts,
   subscribeToOrders,
+  subscribeToExpenses,
+  subscribeToCustomers,
+  subscribeToTables,
   subscribeToUsers,
   subscribeToActivityLogs,
   subscribeToSettings,
   saveProductToFirestore,
   deleteProductFromFirestore,
   saveOrderToFirestore,
+  updateOrderStatusInFirestore,
+  deleteOrderFromFirestore,
+  saveExpenseToFirestore,
+  deleteExpenseFromFirestore,
+  saveCustomerToFirestore,
+  deleteCustomerFromFirestore,
+  saveTableToFirestore,
   saveSettingsToFirestore,
   logUserActivity,
   DEFAULT_USERS
@@ -70,54 +80,47 @@ export default function App() {
   // 1. Persistent Data with Real-Time Firestore Synchronization
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [expenses, setExpenses] = useState<Expense[]>(() => {
-    try {
-      const saved = localStorage.getItem('restodash_expenses_v2') || localStorage.getItem('restodash_expenses');
-      return saved ? JSON.parse(saved) : INITIAL_EXPENSES;
-    } catch {
-      return INITIAL_EXPENSES;
-    }
-  });
-
-  const [customers, setCustomers] = useState<Customer[]>(() => {
-    try {
-      const saved = localStorage.getItem('restodash_customers_v2') || localStorage.getItem('restodash_customers');
-      return saved ? JSON.parse(saved) : INITIAL_CUSTOMERS;
-    } catch {
-      return INITIAL_CUSTOMERS;
-    }
-  });
-
-  const [tables, setTables] = useState<TableInfo[]>(() => {
-    try {
-      const saved = localStorage.getItem('restodash_tables_v2') || localStorage.getItem('restodash_tables');
-      return saved ? JSON.parse(saved) : INITIAL_TABLES;
-    } catch {
-      return INITIAL_TABLES;
-    }
-  });
-
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [tables, setTables] = useState<TableInfo[]>([]);
   const [settings, setSettings] = useState<ShopSettings>(INITIAL_SETTINGS);
 
-  // Filter products and orders strictly by user account (Multi-user Data Isolation)
+  // Filter products, orders, expenses by user account (Multi-user Data Isolation)
   const userProducts = React.useMemo(() => {
     if (!currentUser) return [];
-    // Default system Admin sees demo catalog or products created by admin
     if (currentUser.id === 'user-admin' || currentUser.username === 'admin') {
       const adminList = products.filter(p => !p.userId || p.userId === 'user-admin' || p.userId === currentUser.id);
       return adminList.length > 0 ? adminList : INITIAL_PRODUCTS;
     }
-    // Any newly registered user / member: STRICTLY empty unless they added their own products
     return products.filter(p => p.userId === currentUser.id);
   }, [products, currentUser]);
 
   const userOrders = React.useMemo(() => {
     if (!currentUser) return [];
     if (currentUser.id === 'user-admin' || currentUser.username === 'admin') {
-      return orders.filter(o => !o.userId || o.userId === 'user-admin' || o.userId === currentUser.id);
+      const adminOrders = orders.filter(o => !o.userId || o.userId === 'user-admin' || o.userId === currentUser.id);
+      return adminOrders.length > 0 ? adminOrders : orders;
     }
     return orders.filter(o => o.userId === currentUser.id);
   }, [orders, currentUser]);
+
+  const userExpenses = React.useMemo(() => {
+    if (!currentUser) return [];
+    if (currentUser.id === 'user-admin' || currentUser.username === 'admin') {
+      const adminExpenses = expenses.filter(e => !e.userId || e.userId === 'user-admin' || e.userId === currentUser.id);
+      return adminExpenses.length > 0 ? adminExpenses : expenses;
+    }
+    return expenses.filter(e => e.userId === currentUser.id);
+  }, [expenses, currentUser]);
+
+  const userCustomers = React.useMemo(() => {
+    if (!currentUser) return [];
+    if (currentUser.id === 'user-admin' || currentUser.username === 'admin') {
+      const adminCustomers = customers.filter(c => !c.userId || c.userId === 'user-admin' || c.userId === currentUser.id);
+      return adminCustomers.length > 0 ? adminCustomers : customers;
+    }
+    return customers.filter(c => c.userId === currentUser.id);
+  }, [customers, currentUser]);
 
   // 2. Active Screen State
   const [activeView, setActiveView] = useState<ActiveView>('pos');
@@ -139,6 +142,18 @@ export default function App() {
       setOrders(cloudOrders || []);
     });
 
+    const unsubExpenses = subscribeToExpenses((cloudExpenses) => {
+      setExpenses(cloudExpenses || []);
+    });
+
+    const unsubCustomers = subscribeToCustomers((cloudCustomers) => {
+      setCustomers(cloudCustomers || []);
+    });
+
+    const unsubTables = subscribeToTables((cloudTables) => {
+      setTables(cloudTables || []);
+    });
+
     const unsubUsers = subscribeToUsers((cloudUsers) => {
       if (cloudUsers && cloudUsers.length > 0) {
         setUsers(cloudUsers);
@@ -158,6 +173,9 @@ export default function App() {
     return () => {
       unsubProducts();
       unsubOrders();
+      unsubExpenses();
+      unsubCustomers();
+      unsubTables();
       unsubUsers();
       unsubLogs();
       unsubSettings();
@@ -186,7 +204,7 @@ export default function App() {
     setActiveView('pos');
   };
 
-  // Auth logout handler - 100% instant & reliable
+  // Auth logout handler
   const handleLogout = () => {
     if (currentUser) {
       logUserActivity(
@@ -203,7 +221,7 @@ export default function App() {
     setMobileSidebarOpen(false);
   };
 
-  // 3. Current Order / Cart State - Clean by default for every session
+  // 3. Current Order / Cart State
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [selectedTable, setSelectedTable] = useState<string>('Counter 01 (Main POS)');
   const [discount, setDiscount] = useState<number>(0);
@@ -224,17 +242,6 @@ export default function App() {
     localStorage.setItem('minipos_auth_user', JSON.stringify(updatedUser));
   };
 
-  // Sync auxiliary state to localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem('restodash_expenses_v2', JSON.stringify(expenses));
-      localStorage.setItem('restodash_customers_v2', JSON.stringify(customers));
-      localStorage.setItem('restodash_tables_v2', JSON.stringify(tables));
-    } catch {
-      // Safe catch
-    }
-  }, [expenses, customers, tables]);
-
   // Handle Cart Operations
   const handleAddToCart = (product: Product) => {
     setCartItems(prev => {
@@ -250,7 +257,6 @@ export default function App() {
         return [...prev, { product, quantity: 1 }];
       }
     });
-    // On mobile view, smoothly pop up the cart sheet for effortless checkout & modification
     setIsMobileCartOpen(true);
   };
 
@@ -288,10 +294,24 @@ export default function App() {
       ...newOrder,
       userId: currentUser?.id || 'user-admin'
     };
-    setOrders(prev => [orderWithUser, ...prev]);
     
     // Save order to Firestore cloud
     await saveOrderToFirestore(orderWithUser);
+
+    // If customer was specified, update customer's lifetime stats & points
+    if (orderWithUser.customerName && orderWithUser.customerName !== 'Walk-in Customer' && orderWithUser.customerName !== 'Draft Order') {
+      const matchedCust = customers.find(c => c.name.toLowerCase() === orderWithUser.customerName?.toLowerCase());
+      if (matchedCust) {
+        const updatedCust: Customer = {
+          ...matchedCust,
+          totalOrders: matchedCust.totalOrders + 1,
+          totalSpent: matchedCust.totalSpent + orderWithUser.total,
+          points: matchedCust.points + Math.round(orderWithUser.total),
+          lastVisit: new Date().toISOString().slice(0, 10)
+        };
+        await saveCustomerToFirestore(updatedCust);
+      }
+    }
 
     if (currentUser) {
       await logUserActivity(
@@ -325,7 +345,7 @@ export default function App() {
   };
 
   // Save as Draft
-  const handleSaveDraft = () => {
+  const handleSaveDraft = async () => {
     if (cartItems.length === 0) return;
     
     const subtotal = cartItems.reduce((s, i) => s + i.product.price * i.quantity, 0);
@@ -349,15 +369,14 @@ export default function App() {
       amountPaid: 0,
       changeDue: 0,
       tableNumber: selectedTable,
-      customerName: customerName || 'Draft Order',
+      customerName: customerName || (language === 'kh' ? 'សេចក្តីព្រាង' : 'Draft Order'),
       cashierName: currentUser?.fullName || cashierName,
       status: 'draft',
       createdAt: new Date().toISOString(),
       note: orderNote
     };
 
-    setOrders(prev => [draftOrder, ...prev]);
-    saveOrderToFirestore(draftOrder);
+    await saveOrderToFirestore(draftOrder);
     setCartItems([]);
     alert(language === 'kh' ? 'ការកុម្ម៉ង់ត្រូវបានរក្សាទុកក្នុងសេចក្តីព្រាង (Draft)!' : 'Order saved as draft!');
   };
@@ -369,7 +388,6 @@ export default function App() {
       userId: currentUser?.id || 'user-admin',
       createdAt: newProd.createdAt || new Date().toISOString()
     };
-    setProducts(prev => [prodWithUser, ...prev.filter(p => p.id !== prodWithUser.id)]);
     await saveProductToFirestore(prodWithUser);
     if (currentUser) {
       await logUserActivity(currentUser.id, currentUser.username, currentUser.role, 'ADD_PRODUCT', `Added product "${prodWithUser.name}"`);
@@ -381,7 +399,6 @@ export default function App() {
       ...updated,
       userId: updated.userId || currentUser?.id || 'user-admin'
     };
-    setProducts(prev => prev.map(p => p.id === prodWithUser.id ? prodWithUser : p));
     await saveProductToFirestore(prodWithUser);
     if (currentUser) {
       await logUserActivity(currentUser.id, currentUser.username, currentUser.role, 'UPDATE_PRODUCT', `Updated product "${prodWithUser.name}"`);
@@ -390,25 +407,56 @@ export default function App() {
 
   const handleDeleteProduct = async (productId: string) => {
     const target = products.find(p => p.id === productId);
-    setProducts(prev => prev.filter(p => p.id !== productId));
     await deleteProductFromFirestore(productId);
     if (currentUser && target) {
       await logUserActivity(currentUser.id, currentUser.username, currentUser.role, 'DELETE_PRODUCT', `Deleted product "${target.name}"`);
     }
   };
 
-  // Expense CRUD
-  const handleAddExpense = (expense: Expense) => {
-    setExpenses(prev => [expense, ...prev]);
+  // Expense CRUD with Firestore Sync
+  const handleAddExpense = async (expense: Expense) => {
+    const expWithUser: Expense = {
+      ...expense,
+      userId: currentUser?.id || 'user-admin'
+    };
+    await saveExpenseToFirestore(expWithUser);
+    if (currentUser) {
+      await logUserActivity(currentUser.id, currentUser.username, currentUser.role, 'ADD_EXPENSE', `Logged expense "${expense.title}" of $${expense.amount}`);
+    }
   };
 
-  const handleDeleteExpense = (expenseId: string) => {
-    setExpenses(prev => prev.filter(e => e.id !== expenseId));
+  const handleDeleteExpense = async (expenseId: string) => {
+    await deleteExpenseFromFirestore(expenseId);
+  };
+
+  // Customer CRUD with Firestore Sync
+  const handleAddCustomer = async (customer: Customer) => {
+    const custWithUser: Customer = {
+      ...customer,
+      userId: currentUser?.id || 'user-admin'
+    };
+    await saveCustomerToFirestore(custWithUser);
+    if (currentUser) {
+      await logUserActivity(currentUser.id, currentUser.username, currentUser.role, 'ADD_CUSTOMER', `Registered customer "${customer.name}"`);
+    }
+  };
+
+  // Order Status update (e.g. Mark Draft as Completed)
+  const handleUpdateOrderStatus = async (orderId: string, status: Order['status']) => {
+    await updateOrderStatusInFirestore(orderId, status);
+  };
+
+  const handleDeleteOrder = async (orderId: string) => {
+    await deleteOrderFromFirestore(orderId);
   };
 
   // Table Status
-  const handleUpdateTableStatus = (tableId: string, status: TableInfo['status']) => {
-    setTables(prev => prev.map(t => t.id === tableId ? { ...t, status } : t));
+  const handleUpdateTableStatus = async (tableId: string, status: TableInfo['status']) => {
+    const t = tables.find(item => item.id === tableId);
+    if (t) {
+      const updated = { ...t, status };
+      await saveTableToFirestore(updated);
+    }
   };
 
   const handleSelectTableForPOS = (tableName: string) => {
@@ -424,14 +472,17 @@ export default function App() {
 
   // Reset to initial demo data
   const handleResetData = async () => {
-    setProducts(INITIAL_PRODUCTS);
-    setOrders(INITIAL_ORDERS);
-    setExpenses(INITIAL_EXPENSES);
-    setCustomers(INITIAL_CUSTOMERS);
-    setTables(INITIAL_TABLES);
-    setSettings(INITIAL_SETTINGS);
     for (const p of INITIAL_PRODUCTS) {
-      await saveProductToFirestore(p);
+      await saveProductToFirestore({ ...p, userId: currentUser?.id || 'user-admin' });
+    }
+    for (const o of INITIAL_ORDERS) {
+      await saveOrderToFirestore({ ...o, userId: currentUser?.id || 'user-admin' });
+    }
+    for (const e of INITIAL_EXPENSES) {
+      await saveExpenseToFirestore({ ...e, userId: currentUser?.id || 'user-admin' });
+    }
+    for (const c of INITIAL_CUSTOMERS) {
+      await saveCustomerToFirestore({ ...c, userId: currentUser?.id || 'user-admin' });
     }
     await saveSettingsToFirestore(INITIAL_SETTINGS);
   };
@@ -476,10 +527,12 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f6fa] flex text-slate-800 font-sans selection:bg-indigo-500 selection:text-white">
+    <div className="min-h-screen w-full max-w-full overflow-x-hidden bg-[#f5f6fa] flex text-slate-800 font-sans selection:bg-indigo-500 selection:text-white relative">
       {/* 1. Left Sidebar Navigation */}
-      <div className={`fixed inset-y-0 left-0 z-40 md:relative md:z-auto transition-transform duration-200 ${
-        mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+      <div className={`fixed inset-y-0 left-0 z-40 md:relative md:z-auto transition-all duration-200 ${
+        mobileSidebarOpen 
+          ? 'translate-x-0 opacity-100 visible pointer-events-auto' 
+          : '-translate-x-full opacity-0 invisible md:opacity-100 md:visible md:translate-x-0 pointer-events-none md:pointer-events-auto'
       }`}>
         <Sidebar
           activeView={activeView}
@@ -502,12 +555,12 @@ export default function App() {
       {mobileSidebarOpen && (
         <div 
           onClick={() => setMobileSidebarOpen(false)}
-          className="fixed inset-0 bg-black/40 z-30 md:hidden"
+          className="fixed inset-0 bg-black/40 backdrop-blur-xs z-30 md:hidden animate-in fade-in duration-200"
         />
       )}
 
       {/* 2. Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto">
+      <div className="flex-1 flex flex-col w-full min-w-0 max-w-full h-screen overflow-y-auto overflow-x-hidden touch-scroll">
         {/* Top Header */}
         <Header
           products={userProducts}
@@ -527,14 +580,14 @@ export default function App() {
         />
 
         {/* Body View Router */}
-        <main className="p-4 sm:p-6 flex-1 flex flex-col">
+        <main className="p-3 sm:p-5 lg:p-6 flex-1 flex flex-col w-full max-w-full overflow-x-hidden">
           {activeView === 'pos' && (
             <div className="flex-1 flex flex-col">
               {/* Top 4 Stat Cards */}
               <StatCards
                 orders={userOrders}
-                customers={customers}
-                expenses={expenses}
+                customers={userCustomers}
+                expenses={userExpenses}
                 language={language}
               />
 
@@ -594,7 +647,7 @@ export default function App() {
           {activeView === 'income_reports' && (
             <IncomeReports
               orders={userOrders}
-              expenses={expenses}
+              expenses={userExpenses}
               products={userProducts}
               language={language}
               khrRate={settings.khrExchangeRate}
@@ -603,7 +656,7 @@ export default function App() {
 
           {activeView === 'expenses' && (
             <ExpensesManager
-              expenses={expenses}
+              expenses={userExpenses}
               onAddExpense={handleAddExpense}
               onDeleteExpense={handleDeleteExpense}
               language={language}
@@ -615,6 +668,8 @@ export default function App() {
             <OrdersManager
               orders={userOrders}
               onViewReceipt={(ord) => setActiveReceiptOrder(ord)}
+              onUpdateOrderStatus={handleUpdateOrderStatus}
+              onDeleteOrder={handleDeleteOrder}
               language={language}
               khrRate={settings.khrExchangeRate}
             />
@@ -631,8 +686,8 @@ export default function App() {
 
           {activeView === 'customers' && (
             <CustomersManager
-              customers={customers}
-              onAddCustomer={(c) => setCustomers(prev => [c, ...prev])}
+              customers={userCustomers}
+              onAddCustomer={handleAddCustomer}
               language={language}
             />
           )}
