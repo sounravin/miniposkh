@@ -37,8 +37,17 @@ export const BarcodeAutoCaptureModal: React.FC<BarcodeAutoCaptureModalProps> = (
   const [selectedCameraId, setSelectedCameraId] = useState<string>('');
 
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
+  const isProcessingRef = useRef<boolean>(false);
   const scannerRegionId = 'auto-barcode-capture-viewport';
   const isKh = language === 'kh';
+
+  // Reset processing lock on open
+  useEffect(() => {
+    if (isOpen) {
+      isProcessingRef.current = false;
+      setCapturedCode(null);
+    }
+  }, [isOpen]);
 
   // Discover camera devices (including ultra-wide/macro lenses on iOS/Android)
   useEffect(() => {
@@ -66,8 +75,10 @@ export const BarcodeAutoCaptureModal: React.FC<BarcodeAutoCaptureModalProps> = (
 
   const handleDetected = (rawCode: string) => {
     const cleanCode = rawCode.trim();
-    if (!cleanCode) return;
+    if (!cleanCode || isProcessingRef.current) return;
 
+    // Strictly lock immediately to ensure exactly 1x execution
+    isProcessingRef.current = true;
     sounds.playBarcodeBeep();
     setCapturedCode(cleanCode);
 
@@ -75,7 +86,7 @@ export const BarcodeAutoCaptureModal: React.FC<BarcodeAutoCaptureModalProps> = (
       stopCamera();
       onBarcodeCaptured(cleanCode);
       onClose();
-    }, 450);
+    }, 400);
   };
 
   // Start Camera with iPhone macro lens / high-resolution autofocus focus mode
@@ -86,6 +97,7 @@ export const BarcodeAutoCaptureModal: React.FC<BarcodeAutoCaptureModalProps> = (
     }
 
     let isMounted = true;
+    isProcessingRef.current = false;
 
     const startCamera = async () => {
       try {
@@ -102,7 +114,6 @@ export const BarcodeAutoCaptureModal: React.FC<BarcodeAutoCaptureModalProps> = (
           cameraConfig,
           {
             fps: 15,
-            qrbox: { width: 280, height: 160 },
             aspectRatio: 1.333334,
             videoConstraints: {
               facingMode: 'environment',
@@ -116,7 +127,7 @@ export const BarcodeAutoCaptureModal: React.FC<BarcodeAutoCaptureModalProps> = (
             } as any
           },
           (decodedText) => {
-            if (isMounted) {
+            if (isMounted && !isProcessingRef.current) {
               handleDetected(decodedText);
             }
           },

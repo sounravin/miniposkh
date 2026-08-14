@@ -116,7 +116,27 @@
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+/* Barcode & QR Scanner Viewport Optimizations */
+#auto-barcode-capture-viewport,
+#barcode-scanner-viewport {
+  width: 100% !important;
+  height: 100% !important;
+  position: relative !important;
+  overflow: hidden !important;
+  border-radius: 1rem !important;
+}
+
+#auto-barcode-capture-viewport video,
+#barcode-scanner-viewport video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  border-radius: 1rem !important;
+}
+
+#auto-barcode-capture-viewport #qr-shaded-region,
+#barcode-scanner-viewport #qr-shaded-region {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }

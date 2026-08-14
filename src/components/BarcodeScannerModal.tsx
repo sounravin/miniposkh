@@ -49,20 +49,32 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
 
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
   const scannerRegionId = 'barcode-scanner-viewport';
+  const isScanLockedRef = useRef<boolean>(false);
   const lastScannedCodeRef = useRef<{ code: string; time: number }>({ code: '', time: 0 });
 
   const isKh = language === 'kh';
+
+  // Reset lock when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      isScanLockedRef.current = false;
+      lastScannedCodeRef.current = { code: '', time: 0 };
+    }
+  }, [isOpen]);
 
   // Handle Barcode matching logic
   const handleBarcodeDetected = (code: string) => {
     const cleanCode = code.trim();
     if (!cleanCode) return;
 
-    // Debounce duplicate camera scans within 1.5 seconds for same code
     const now = Date.now();
-    if (lastScannedCodeRef.current.code === cleanCode && now - lastScannedCodeRef.current.time < 1500) {
+    // Synchronous guard against x2 double scan
+    if (isScanLockedRef.current) return;
+    if (lastScannedCodeRef.current.code === cleanCode && now - lastScannedCodeRef.current.time < 2000) {
       return;
     }
+
+    isScanLockedRef.current = true;
     lastScannedCodeRef.current = { code: cleanCode, time: now };
 
     const matchedProduct = products.find(
@@ -78,18 +90,23 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
 
       setScanMessage({
         text: isKh 
-          ? `បានរកឃើញ៖ "${matchedProduct.name}" ($${matchedProduct.price.toFixed(2)}) — បានបញ្ចូលទៅក្នុងកន្ត្រកគិតលុយរួចរាល់!` 
-          : `Found: ${matchedProduct.name} ($${matchedProduct.price.toFixed(2)}) — Added to checkout list!`,
+          ? `បានរកឃើញ៖ "${matchedProduct.name}" ($${matchedProduct.price.toFixed(2)}) — បានបញ្ចូល +1 ក្នុងកន្ត្រកជោគជ័យ!` 
+          : `Found: ${matchedProduct.name} ($${matchedProduct.price.toFixed(2)}) — Added +1 to cart!`,
         type: 'success',
         product: matchedProduct
       });
 
-      // Execute Cart Add Callback
+      // Execute Cart Add Callback exactly 1 time
       if (autoAddToCart) {
         onScanSuccess(matchedProduct);
       }
 
       setManualCode('');
+
+      // Unlock after 1.8 seconds for smooth sequential item scanning
+      setTimeout(() => {
+        isScanLockedRef.current = false;
+      }, 1800);
 
       if (autoCloseToCart) {
         setTimeout(() => {
@@ -98,7 +115,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
           if (onOpenCartMobile) {
             onOpenCartMobile();
           }
-        }, 600);
+        }, 500);
       } else {
         setTimeout(() => {
           setScanMessage(null);
@@ -112,8 +129,9 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
         type: 'error'
       });
       setTimeout(() => {
+        isScanLockedRef.current = false;
         setScanMessage(null);
-      }, 4000);
+      }, 2000);
     }
   };
 
@@ -167,7 +185,6 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
           { facingMode: 'environment' },
           {
             fps: 15,
-            qrbox: { width: 280, height: 180 },
             aspectRatio: 1.333334,
             videoConstraints: {
               facingMode: 'environment',
