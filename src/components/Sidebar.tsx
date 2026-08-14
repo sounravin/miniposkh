@@ -11,7 +11,10 @@ import {
   QrCode,
   Sparkles,
   HelpCircle,
-  ShieldCheck
+  ShieldCheck,
+  Share2,
+  Globe,
+  Bell
 } from 'lucide-react';
 import { ActiveView, User } from '../types';
 import { Logo } from './Logo';
@@ -23,11 +26,14 @@ interface SidebarProps {
   openBarcodeScanner: () => void;
   ordersCount: number;
   productsCount: number;
+  pendingOnlineOrdersCount?: number;
   language: 'en' | 'kh';
   currentUser?: User | null;
   onLogout?: () => void;
   onOpenProfileModal?: () => void;
   onCloseMobile?: () => void;
+  onOpenCustomerMenuShare?: () => void;
+  onOpenIncomingOnlineOrders?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -36,11 +42,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
   openBarcodeScanner,
   ordersCount,
   productsCount,
+  pendingOnlineOrdersCount = 0,
   language,
   currentUser,
   onLogout,
   onOpenProfileModal,
-  onCloseMobile
+  onCloseMobile,
+  onOpenCustomerMenuShare,
+  onOpenIncomingOnlineOrders
 }) => {
   const isKh = language === 'kh';
 
@@ -68,6 +77,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
       label: isKh ? 'បញ្ជីលក់ & វិក្កយបត្រ' : 'Sales Orders',
       icon: ShoppingCart,
       badge: ordersCount > 0 ? ordersCount : null
+    },
+    {
+      id: 'customer_menu_preview' as ActiveView,
+      label: isKh ? 'ម៉ឺនុយកុម្ម៉ង់អតិថិជន' : 'Customer Online Menu',
+      icon: Globe,
+      badge: isKh ? 'LIVE' : 'LIVE',
+      badgeColor: 'bg-emerald-100 text-emerald-800'
     },
     {
       id: 'income_reports' as ActiveView,
@@ -122,14 +138,46 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
         </div>
 
-        {/* Barcode Quick Scanner CTA Button */}
-        <div className="px-4 pt-4 pb-2">
+        {/* Action Buttons: 1. Barcode Scanner, 2. Share Customer Menu Link, 3. Online Orders Queue */}
+        <div className="px-4 pt-3.5 pb-2 space-y-2">
+          {/* Share Customer Menu CTA Button */}
+          {onOpenCustomerMenuShare && (
+            <button
+              id="sidebar-share-menu-btn"
+              onClick={onOpenCustomerMenuShare}
+              className="w-full flex items-center justify-between px-3.5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all active:scale-[0.98] cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
+                <Share2 className="w-4 h-4 text-emerald-200" />
+                <span className="truncate">{isKh ? '📱 Link ម៉ឺនុយអតិថិជន' : '📱 Share Customer Menu'}</span>
+              </div>
+              <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded font-mono font-bold">QR</span>
+            </button>
+          )}
+
+          {/* Pending Online Orders Quick Trigger */}
+          {pendingOnlineOrdersCount > 0 && onOpenIncomingOnlineOrders && (
+            <button
+              onClick={onOpenIncomingOnlineOrders}
+              className="w-full flex items-center justify-between px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition-all animate-pulse cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
+                <Bell className="w-4 h-4 text-rose-600" />
+                <span>{isKh ? 'កុម្ម៉ង់អនឡាញថ្មី!' : 'Online Orders!'}</span>
+              </div>
+              <span className="bg-rose-600 text-white text-[10px] px-2 py-0.5 rounded-full font-black">
+                {pendingOnlineOrdersCount}
+              </span>
+            </button>
+          )}
+
+          {/* Barcode Quick Scanner */}
           <button
             id="sidebar-scan-barcode-btn"
             onClick={openBarcodeScanner}
-            className="w-full flex items-center justify-center gap-2.5 px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all active:scale-[0.98] cursor-pointer"
+            className="w-full flex items-center justify-center gap-2 px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-all active:scale-[0.98] cursor-pointer"
           >
-            <QrCode className="w-4 h-4" />
+            <QrCode className="w-3.5 h-3.5 text-indigo-600" />
             <span>{isKh ? 'ស្កេនបាកូដ (Scan Barcode)' : 'Quick Scan Barcode'}</span>
           </button>
         </div>
@@ -156,7 +204,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </div>
                 {item.badge !== null && (
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                    isActive ? 'bg-indigo-200 text-indigo-800' : 'bg-slate-100 text-slate-600'
+                    item.badgeColor 
+                      ? item.badgeColor 
+                      : isActive ? 'bg-indigo-200 text-indigo-800' : 'bg-slate-100 text-slate-600'
                   }`}>
                     {item.badge}
                   </span>
@@ -225,3 +275,4 @@ export const Sidebar: React.FC<SidebarProps> = ({
     </aside>
   );
 };
+

@@ -43,7 +43,7 @@ export interface Order {
   customerName?: string;
   customerPhone?: string;
   cashierName: string;
-  status: 'completed' | 'draft' | 'cancelled';
+  status: 'completed' | 'draft' | 'cancelled' | 'pending_online';
   createdAt: string; // ISO string
   note?: string;
 }
@@ -129,7 +129,8 @@ export type ActiveView =
   | 'tables' 
   | 'customers' 
   | 'settings'
-  | 'admin_console';
+  | 'admin_console'
+  | 'customer_menu_preview';
 
 export interface AppNotification {
   id: string;

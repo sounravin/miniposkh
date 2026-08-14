@@ -103,6 +103,11 @@ class SoundManager {
     }
   }
 
+  // Quick success chime
+  public playSuccessChime() {
+    this.playCashRegister();
+  }
+
   // Notification alert chime (Two-tone warm bell)
   public playNotificationAlert() {
     try {

@@ -140,6 +140,26 @@ export async function initializeFirestoreDatabase(): Promise<void> {
   }
 }
 
+// Helper to recursively remove undefined values which cause Firestore setDoc/updateDoc to throw errors
+export function cleanForFirestore<T>(data: T): T {
+  if (data === null || data === undefined) {
+    return null as unknown as T;
+  }
+  if (Array.isArray(data)) {
+    return data.map((item) => cleanForFirestore(item)) as unknown as T;
+  }
+  if (typeof data === 'object' && !(data instanceof Date)) {
+    const cleaned: Record<string, any> = {};
+    for (const [key, value] of Object.entries(data)) {
+      if (value !== undefined) {
+        cleaned[key] = cleanForFirestore(value);
+      }
+    }
+    return cleaned as T;
+  }
+  return data;
+}
+
 // Activity Logging
 export async function logUserActivity(
   userId: string,
@@ -152,14 +172,14 @@ export async function logUserActivity(
     const logId = `log-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
     const logItem: ActivityLog = {
       id: logId,
-      userId,
-      username,
-      userRole,
-      action,
-      details,
+      userId: userId || 'system',
+      username: username || 'User',
+      userRole: userRole || 'staff',
+      action: action || 'Action',
+      details: details || '',
       timestamp: new Date().toISOString()
     };
-    await setDoc(doc(db, 'activity_logs', logId), logItem);
+    await setDoc(doc(db, 'activity_logs', logId), cleanForFirestore(logItem));
   } catch (err) {
     console.warn('Failed to record activity log to Firestore:', err);
   }
@@ -361,7 +381,7 @@ export function subscribeToSettings(callback: (settings: ShopSettings) => void):
 
 // Save or Update Product
 export async function saveProductToFirestore(product: Product): Promise<void> {
-  await setDoc(doc(db, 'products', product.id), product);
+  await setDoc(doc(db, 'products', product.id), cleanForFirestore(product));
 }
 
 // Delete Product
@@ -371,7 +391,7 @@ export async function deleteProductFromFirestore(productId: string): Promise<voi
 
 // Save Order
 export async function saveOrderToFirestore(order: Order): Promise<void> {
-  await setDoc(doc(db, 'orders', order.id), order);
+  await setDoc(doc(db, 'orders', order.id), cleanForFirestore(order));
 }
 
 // Update Order Status
@@ -386,7 +406,7 @@ export async function deleteOrderFromFirestore(orderId: string): Promise<void> {
 
 // Save Expense
 export async function saveExpenseToFirestore(expense: Expense): Promise<void> {
-  await setDoc(doc(db, 'expenses', expense.id), expense);
+  await setDoc(doc(db, 'expenses', expense.id), cleanForFirestore(expense));
 }
 
 // Delete Expense
@@ -396,7 +416,7 @@ export async function deleteExpenseFromFirestore(expenseId: string): Promise<voi
 
 // Save Customer
 export async function saveCustomerToFirestore(customer: Customer): Promise<void> {
-  await setDoc(doc(db, 'customers', customer.id), customer);
+  await setDoc(doc(db, 'customers', customer.id), cleanForFirestore(customer));
 }
 
 // Delete Customer
@@ -406,17 +426,17 @@ export async function deleteCustomerFromFirestore(customerId: string): Promise<v
 
 // Save Table
 export async function saveTableToFirestore(table: TableInfo): Promise<void> {
-  await setDoc(doc(db, 'tables', table.id), table);
+  await setDoc(doc(db, 'tables', table.id), cleanForFirestore(table));
 }
 
 // Save Settings
 export async function saveSettingsToFirestore(settings: ShopSettings): Promise<void> {
-  await setDoc(doc(db, 'settings', 'general'), settings);
+  await setDoc(doc(db, 'settings', 'general'), cleanForFirestore(settings));
 }
 
 // Save or Update User
 export async function saveUserToFirestore(user: User): Promise<void> {
-  await setDoc(doc(db, 'users', user.id), user);
+  await setDoc(doc(db, 'users', user.id), cleanForFirestore(user));
 }
 
 // Update User Status

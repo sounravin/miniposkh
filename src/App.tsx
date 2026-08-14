@@ -39,6 +39,10 @@ import { SettingsManager } from './components/SettingsManager';
 import { WelcomeAuthPage } from './components/WelcomeAuthPage';
 import { AdminConsole } from './components/AdminConsole';
 import { UserProfileModal } from './components/UserProfileModal';
+import { CustomerCatalogView } from './components/CustomerCatalogView';
+import { CustomerMenuShareModal } from './components/CustomerMenuShareModal';
+import { IncomingOnlineOrdersDrawer } from './components/IncomingOnlineOrdersDrawer';
+import { Share2 } from 'lucide-react';
 import {
   initializeFirestoreDatabase,
   subscribeToProducts,
@@ -334,6 +338,56 @@ export default function App() {
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
   const [activeReceiptOrder, setActiveReceiptOrder] = useState<Order | null>(null);
+  const [isCustomerMenuShareOpen, setIsCustomerMenuShareOpen] = useState(false);
+  const [isIncomingOrdersDrawerOpen, setIsIncomingOrdersDrawerOpen] = useState(false);
+
+  // BroadcastChannel listener for real-time customer online orders
+  useEffect(() => {
+    if (typeof BroadcastChannel !== 'undefined') {
+      const channel = new BroadcastChannel('minipos_online_orders');
+      channel.onmessage = (event) => {
+        if (event.data && event.data.type === 'NEW_CUSTOMER_ORDER') {
+          sounds.playNotificationAlert();
+          const ord = event.data.order as Order;
+          addNotification({
+            title: language === 'kh' ? '🔔 មានការកុម្ម៉ង់ថ្មីពីអតិថិជន!' : '🔔 New Customer Order Received!',
+            desc: language === 'kh' 
+              ? `អតិថិជន ${ord?.customerName || 'អនឡាញ'} បានផ្ញើការកុម្ម៉ង់ #${ord?.orderNumber} (សរុប $${ord?.total?.toFixed(2) || '0.00'})`
+              : `Customer ${ord?.customerName || 'Online'} placed order #${ord?.orderNumber} (Total $${ord?.total?.toFixed(2) || '0.00'})`,
+            type: 'info',
+            category: 'order',
+            linkView: 'orders'
+          });
+          setIsIncomingOrdersDrawerOpen(true);
+        }
+      };
+      return () => {
+        channel.close();
+      };
+    }
+  }, [language]);
+
+  // Load an online customer order directly into POS current order to checkout
+  const handleLoadOrderToPOS = (order: Order) => {
+    setCartItems(order.items || []);
+    if (order.customerName) setCustomerName(order.customerName);
+    if (order.tableNumber) setSelectedTable(order.tableNumber);
+    if (order.note) setOrderNote(order.note);
+    if (typeof order.discount === 'number') setDiscount(order.discount);
+    if (order.discountType) setDiscountType(order.discountType);
+    setActiveView('pos');
+    setIsMobileCartOpen(true);
+    sounds.playSuccessChime();
+    addNotification({
+      title: language === 'kh' ? '📥 បានបញ្ចូលក្នុង Current Order' : '📥 Loaded into POS Order',
+      desc: language === 'kh'
+        ? `ការកុម្ម៉ង់ #${order.orderNumber} ត្រូវបានបញ្ចូលក្នុងកន្ត្រក POS ដើម្បីត្រៀមគិតលុយ!`
+        : `Order #${order.orderNumber} loaded into checkout cart!`,
+      type: 'success',
+      category: 'order',
+      linkView: 'pos'
+    });
+  };
 
   // Profile update handler
   const handleUpdateCurrentUser = (updatedUser: User) => {
@@ -621,6 +675,42 @@ export default function App() {
     await saveSettingsToFirestore(INITIAL_SETTINGS);
   };
 
+  // Calculate pending online orders strictly for current user
+  const pendingOnlineOrders = userOrders.filter(o => o.status === 'pending_online');
+
+  // Check if opened directly via customer self-order link (?mode=customer_menu)
+  const isDirectCustomerMenu = typeof window !== 'undefined' && 
+    (window.location.search.includes('mode=customer_menu') || window.location.hash.includes('customer_menu'));
+
+  // Get targeted storeId from query string (?storeId=...)
+  const targetStoreId = typeof window !== 'undefined'
+    ? (new URLSearchParams(window.location.search).get('storeId') || new URLSearchParams(window.location.search).get('userId') || 'user-admin')
+    : 'user-admin';
+
+  // If accessed directly via customer self-order link (?mode=customer_menu), render the Customer Dashboard immediately
+  if (isDirectCustomerMenu) {
+    const storeProducts = products.length > 0
+      ? (targetStoreId === 'user-admin' || targetStoreId === 'admin'
+          ? products.filter(p => !p.userId || p.userId === 'user-admin' || p.userId === 'admin')
+          : products.filter(p => p.userId === targetStoreId))
+      : INITIAL_PRODUCTS;
+
+    const displayProducts = storeProducts.length > 0 ? storeProducts : (products.length > 0 ? products : INITIAL_PRODUCTS);
+
+    return (
+      <CustomerCatalogView
+        products={displayProducts}
+        settings={settings}
+        language={language}
+        isStandalone={true}
+        storeId={targetStoreId}
+        onOrderSubmitted={(newOrd) => {
+          console.log('Customer online order submitted:', newOrd);
+        }}
+      />
+    );
+  }
+
   // If user is not logged in, display the dedicated Welcome / Auth page
   if (!currentUser) {
     return (
@@ -677,11 +767,14 @@ export default function App() {
           openBarcodeScanner={() => setIsBarcodeScannerOpen(true)}
           ordersCount={userOrders.length}
           productsCount={userProducts.length}
+          pendingOnlineOrdersCount={pendingOnlineOrders.length}
           language={language}
           currentUser={currentUser}
           onLogout={handleLogout}
           onOpenProfileModal={() => setIsProfileModalOpen(true)}
           onCloseMobile={() => setMobileSidebarOpen(false)}
+          onOpenCustomerMenuShare={() => setIsCustomerMenuShareOpen(true)}
+          onOpenIncomingOnlineOrders={() => setIsIncomingOrdersDrawerOpen(true)}
         />
       </div>
 
@@ -716,6 +809,9 @@ export default function App() {
           onRemoveNotification={handleRemoveNotification}
           onClearAllNotifications={handleClearAllNotifications}
           onNavigateView={(v) => setActiveView(v)}
+          onOpenCustomerMenuShare={() => setIsCustomerMenuShareOpen(true)}
+          pendingOnlineOrdersCount={pendingOnlineOrders.length}
+          onOpenIncomingOnlineOrders={() => setIsIncomingOrdersDrawerOpen(true)}
         />
 
         {/* Body View Router */}
@@ -773,6 +869,60 @@ export default function App() {
             </div>
           )}
 
+          {activeView === 'customer_menu_preview' && (
+            <div className="space-y-4">
+              {/* Header Actions */}
+              <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-xs border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base sm:text-lg font-black text-slate-800 flex items-center gap-2">
+                      <span>📱</span>
+                      <span>{language === 'kh' ? 'ផ្ទាំងសាកល្បងម៉ឺនុយទូរស័ព្ទ (Customer iPhone / Mobile Preview)' : 'Customer iPhone / Mobile Preview'}</span>
+                    </h2>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                      iPhone Optimized
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {language === 'kh' 
+                      ? `ទម្រង់ម៉ឺនុយសម្រាប់គណនី (${currentUser.fullName}) ដែលអតិថិជននឹងឃើញពេលបើកនៅលើទូរស័ព្ទ iPhone` 
+                      : `Customer menu view for account (${currentUser.fullName}) on iPhone / Mobile`}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setIsCustomerMenuShareOpen(true)}
+                    className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Share2 className="w-4 h-4" />
+                    <span>{language === 'kh' ? '🔗 ចែករំលែក Link / QR' : '🔗 Share Link / QR'}</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveView('pos')}
+                    className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                  >
+                    {language === 'kh' ? 'ត្រឡប់ទៅ POS' : 'Back to POS'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Centered Mobile Frame */}
+              <div className="w-full flex justify-center py-1 sm:py-2">
+                <div className="w-full max-w-md sm:max-w-xl md:max-w-2xl bg-white rounded-3xl shadow-xl border border-slate-200/90 overflow-hidden min-h-[640px]">
+                  <CustomerCatalogView
+                    products={userProducts.length > 0 ? userProducts : INITIAL_PRODUCTS}
+                    settings={settings}
+                    language={language}
+                    onBackToPos={() => setActiveView('pos')}
+                    isStandalone={false}
+                    storeId={currentUser.id}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
           {activeView === 'products' && (
             <ProductsManager
               products={userProducts}
@@ -810,6 +960,7 @@ export default function App() {
               onViewReceipt={(ord) => setActiveReceiptOrder(ord)}
               onUpdateOrderStatus={handleUpdateOrderStatus}
               onDeleteOrder={handleDeleteOrder}
+              onLoadOrderToPOS={handleLoadOrderToPOS}
               language={language}
               khrRate={settings.khrExchangeRate}
             />
@@ -845,6 +996,30 @@ export default function App() {
           )}
         </main>
       </div>
+
+      {/* Share Customer Menu Modal */}
+      <CustomerMenuShareModal
+        isOpen={isCustomerMenuShareOpen}
+        onClose={() => setIsCustomerMenuShareOpen(false)}
+        settings={settings}
+        language={language}
+        currentUserId={currentUser?.id || 'user-admin'}
+        onOpenPreview={() => {
+          setActiveView('customer_menu_preview');
+        }}
+      />
+
+      {/* Incoming Online Customer Orders Drawer */}
+      <IncomingOnlineOrdersDrawer
+        isOpen={isIncomingOrdersDrawerOpen}
+        onClose={() => setIsIncomingOrdersDrawerOpen(false)}
+        onlineOrders={userOrders}
+        onLoadOrderToPOS={handleLoadOrderToPOS}
+        onUpdateOrderStatus={handleUpdateOrderStatus}
+        onDeleteOrder={handleDeleteOrder}
+        language={language}
+        khrRate={settings.khrExchangeRate}
+      />
 
       {/* Global Profile & Photo Modal */}
       {isProfileModalOpen && currentUser && (
@@ -897,18 +1072,6 @@ export default function App() {
         settings={settings}
         language={language}
       />
-
-      {/* User Profile & Photo Upload Modal */}
-      {isProfileModalOpen && currentUser && (
-        <UserProfileModal
-          isOpen={isProfileModalOpen}
-          onClose={() => setIsProfileModalOpen(false)}
-          currentUser={currentUser}
-          onUpdateUser={handleUpdateCurrentUser}
-          onUserUpdated={handleUpdateCurrentUser}
-          language={language}
-        />
-      )}
     </div>
   );
 }
