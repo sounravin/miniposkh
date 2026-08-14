@@ -1,5 +1,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { 
+  initializeFirestore,
   getFirestore, 
   collection, 
   doc, 
@@ -20,10 +21,19 @@ import firebaseConfig from '../../firebase-applet-config.json';
 // Initialize Firebase App
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
-// Initialize Firestore with specific database ID if configured
-export const db: Firestore = firebaseConfig.firestoreDatabaseId
-  ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
-  : getFirestore(app);
+// Initialize Firestore with specific database ID if configured and enable reliable long-polling
+const databaseId = firebaseConfig.firestoreDatabaseId || undefined;
+
+export const db: Firestore = (() => {
+  try {
+    return initializeFirestore(app, {
+      experimentalForceLongPolling: true,
+      ignoreUndefinedProperties: true,
+    }, databaseId);
+  } catch {
+    return databaseId ? getFirestore(app, databaseId) : getFirestore(app);
+  }
+})();
 
 // Firestore Collections helpers
 export const usersCollection = collection(db, 'users');
@@ -49,3 +59,4 @@ export {
   limit,
   serverTimestamp
 };
+

@@ -78,65 +78,107 @@ export const DEFAULT_USERS: User[] = [
 export async function initializeFirestoreDatabase(): Promise<void> {
   try {
     // 1. Seed Users if empty
-    const userDocs = await getDocs(usersCollection);
-    if (userDocs.empty) {
-      for (const u of DEFAULT_USERS) {
-        await setDoc(doc(db, 'users', u.id), u);
+    try {
+      const userDocs = await getDocs(usersCollection);
+      if (userDocs.empty) {
+        for (const u of DEFAULT_USERS) {
+          await setDoc(doc(db, 'users', u.id), u);
+        }
+      } else {
+        const adminDoc = await getDoc(doc(db, 'users', 'user-admin'));
+        if (!adminDoc.exists()) {
+          await setDoc(doc(db, 'users', 'user-admin'), DEFAULT_USERS[0]);
+        }
       }
-    } else {
-      const adminDoc = await getDoc(doc(db, 'users', 'user-admin'));
-      if (!adminDoc.exists()) {
-        await setDoc(doc(db, 'users', 'user-admin'), DEFAULT_USERS[0]);
+    } catch (uErr: any) {
+      if (uErr?.message?.includes('offline') || uErr?.code === 'unavailable') {
+        console.info('Firestore users seeding deferred (operating in offline/cached mode)');
+        return;
       }
+      throw uErr;
     }
 
     // 2. Seed Products if empty
-    const prodDocs = await getDocs(productsCollection);
-    if (prodDocs.empty) {
-      for (const p of INITIAL_PRODUCTS) {
-        await setDoc(doc(db, 'products', p.id), { ...p, userId: 'user-admin' });
+    try {
+      const prodDocs = await getDocs(productsCollection);
+      if (prodDocs.empty) {
+        for (const p of INITIAL_PRODUCTS) {
+          await setDoc(doc(db, 'products', p.id), { ...p, userId: 'user-admin' });
+        }
       }
+    } catch (pErr: any) {
+      if (pErr?.message?.includes('offline') || pErr?.code === 'unavailable') return;
+      throw pErr;
     }
 
     // 3. Seed Settings if empty
-    const settingsDoc = await getDoc(doc(db, 'settings', 'general'));
-    if (!settingsDoc.exists()) {
-      await setDoc(doc(db, 'settings', 'general'), INITIAL_SETTINGS);
+    try {
+      const settingsDoc = await getDoc(doc(db, 'settings', 'general'));
+      if (!settingsDoc.exists()) {
+        await setDoc(doc(db, 'settings', 'general'), INITIAL_SETTINGS);
+      }
+    } catch (sErr: any) {
+      if (sErr?.message?.includes('offline') || sErr?.code === 'unavailable') return;
+      throw sErr;
     }
 
     // 4. Seed sample orders if empty
-    const orderDocs = await getDocs(ordersCollection);
-    if (orderDocs.empty && INITIAL_ORDERS.length > 0) {
-      for (const o of INITIAL_ORDERS) {
-        await setDoc(doc(db, 'orders', o.id), { ...o, userId: 'user-admin' });
+    try {
+      const orderDocs = await getDocs(ordersCollection);
+      if (orderDocs.empty && INITIAL_ORDERS.length > 0) {
+        for (const o of INITIAL_ORDERS) {
+          await setDoc(doc(db, 'orders', o.id), { ...o, userId: 'user-admin' });
+        }
       }
+    } catch (oErr: any) {
+      if (oErr?.message?.includes('offline') || oErr?.code === 'unavailable') return;
+      throw oErr;
     }
 
     // 5. Seed expenses if empty
-    const expenseDocs = await getDocs(expensesCollection);
-    if (expenseDocs.empty && INITIAL_EXPENSES.length > 0) {
-      for (const e of INITIAL_EXPENSES) {
-        await setDoc(doc(db, 'expenses', e.id), { ...e, userId: 'user-admin' });
+    try {
+      const expenseDocs = await getDocs(expensesCollection);
+      if (expenseDocs.empty && INITIAL_EXPENSES.length > 0) {
+        for (const e of INITIAL_EXPENSES) {
+          await setDoc(doc(db, 'expenses', e.id), { ...e, userId: 'user-admin' });
+        }
       }
+    } catch (eErr: any) {
+      if (eErr?.message?.includes('offline') || eErr?.code === 'unavailable') return;
+      throw eErr;
     }
 
     // 6. Seed customers if empty
-    const customerDocs = await getDocs(customersCollection);
-    if (customerDocs.empty && INITIAL_CUSTOMERS.length > 0) {
-      for (const c of INITIAL_CUSTOMERS) {
-        await setDoc(doc(db, 'customers', c.id), { ...c, userId: 'user-admin' });
+    try {
+      const customerDocs = await getDocs(customersCollection);
+      if (customerDocs.empty && INITIAL_CUSTOMERS.length > 0) {
+        for (const c of INITIAL_CUSTOMERS) {
+          await setDoc(doc(db, 'customers', c.id), { ...c, userId: 'user-admin' });
+        }
       }
+    } catch (cErr: any) {
+      if (cErr?.message?.includes('offline') || cErr?.code === 'unavailable') return;
+      throw cErr;
     }
 
     // 7. Seed tables if empty
-    const tableDocs = await getDocs(tablesCollection);
-    if (tableDocs.empty && INITIAL_TABLES.length > 0) {
-      for (const t of INITIAL_TABLES) {
-        await setDoc(doc(db, 'tables', t.id), { ...t, userId: 'user-admin' });
+    try {
+      const tableDocs = await getDocs(tablesCollection);
+      if (tableDocs.empty && INITIAL_TABLES.length > 0) {
+        for (const t of INITIAL_TABLES) {
+          await setDoc(doc(db, 'tables', t.id), { ...t, userId: 'user-admin' });
+        }
       }
+    } catch (tErr: any) {
+      if (tErr?.message?.includes('offline') || tErr?.code === 'unavailable') return;
+      throw tErr;
     }
-  } catch (err) {
-    console.error('Error during Firestore initialization:', err);
+  } catch (err: any) {
+    if (err?.message?.includes('offline') || err?.code === 'unavailable') {
+      console.info('Firestore initial seeding deferred: client is currently in offline mode.');
+    } else {
+      console.warn('Firestore initialization notice:', err);
+    }
   }
 }
 

@@ -90,12 +90,11 @@ export default function App() {
   const [tables, setTables] = useState<TableInfo[]>([]);
   const [settings, setSettings] = useState<ShopSettings>(INITIAL_SETTINGS);
 
-  // Filter products, orders, expenses by user account (Multi-user Data Isolation)
+  // Filter products, orders, expenses by user account (Multi-user Strict Data Isolation)
   const userProducts = React.useMemo(() => {
     if (!currentUser) return [];
     if (currentUser.id === 'user-admin' || currentUser.username === 'admin') {
-      const adminList = products.filter(p => !p.userId || p.userId === 'user-admin' || p.userId === currentUser.id);
-      return adminList.length > 0 ? adminList : INITIAL_PRODUCTS;
+      return products.filter(p => !p.userId || p.userId === 'user-admin' || p.userId === currentUser.id);
     }
     return products.filter(p => p.userId === currentUser.id);
   }, [products, currentUser]);
@@ -103,8 +102,7 @@ export default function App() {
   const userOrders = React.useMemo(() => {
     if (!currentUser) return [];
     if (currentUser.id === 'user-admin' || currentUser.username === 'admin') {
-      const adminOrders = orders.filter(o => !o.userId || o.userId === 'user-admin' || o.userId === currentUser.id);
-      return adminOrders.length > 0 ? adminOrders : orders;
+      return orders.filter(o => !o.userId || o.userId === 'user-admin' || o.userId === currentUser.id);
     }
     return orders.filter(o => o.userId === currentUser.id);
   }, [orders, currentUser]);
@@ -112,8 +110,7 @@ export default function App() {
   const userExpenses = React.useMemo(() => {
     if (!currentUser) return [];
     if (currentUser.id === 'user-admin' || currentUser.username === 'admin') {
-      const adminExpenses = expenses.filter(e => !e.userId || e.userId === 'user-admin' || e.userId === currentUser.id);
-      return adminExpenses.length > 0 ? adminExpenses : expenses;
+      return expenses.filter(e => !e.userId || e.userId === 'user-admin' || e.userId === currentUser.id);
     }
     return expenses.filter(e => e.userId === currentUser.id);
   }, [expenses, currentUser]);
@@ -121,8 +118,7 @@ export default function App() {
   const userCustomers = React.useMemo(() => {
     if (!currentUser) return [];
     if (currentUser.id === 'user-admin' || currentUser.username === 'admin') {
-      const adminCustomers = customers.filter(c => !c.userId || c.userId === 'user-admin' || c.userId === currentUser.id);
-      return adminCustomers.length > 0 ? adminCustomers : customers;
+      return customers.filter(c => !c.userId || c.userId === 'user-admin' || c.userId === currentUser.id);
     }
     return customers.filter(c => c.userId === currentUser.id);
   }, [customers, currentUser]);
@@ -347,8 +343,19 @@ export default function App() {
       const channel = new BroadcastChannel('minipos_online_orders');
       channel.onmessage = (event) => {
         if (event.data && event.data.type === 'NEW_CUSTOMER_ORDER') {
-          sounds.playNotificationAlert();
           const ord = event.data.order as Order;
+          const targetUserId = event.data.targetUserId;
+
+          // Account Isolation: filter notifications only for the intended store owner / cashier
+          if (currentUser) {
+            const isMatch = (currentUser.id === 'user-admin' || currentUser.role === 'admin')
+              ? (!targetUserId || targetUserId === 'user-admin' || targetUserId === currentUser.id || targetUserId === ord?.userId)
+              : (targetUserId === currentUser.id || ord?.userId === currentUser.id);
+            
+            if (!isMatch) return;
+          }
+
+          sounds.playNotificationAlert();
           addNotification({
             title: language === 'kh' ? '🔔 មានការកុម្ម៉ង់ថ្មីពីអតិថិជន!' : '🔔 New Customer Order Received!',
             desc: language === 'kh' 
@@ -365,7 +372,7 @@ export default function App() {
         channel.close();
       };
     }
-  }, [language]);
+  }, [language, currentUser]);
 
   // Load an online customer order directly into POS current order to checkout
   const handleLoadOrderToPOS = (order: Order) => {
@@ -683,29 +690,48 @@ export default function App() {
     (window.location.search.includes('mode=customer_menu') || window.location.hash.includes('customer_menu'));
 
   // Get targeted storeId from query string (?storeId=...)
-  const targetStoreId = typeof window !== 'undefined'
-    ? (new URLSearchParams(window.location.search).get('storeId') || new URLSearchParams(window.location.search).get('userId') || 'user-admin')
-    : 'user-admin';
+  const rawStoreId = typeof window !== 'undefined'
+    ? (new URLSearchParams(window.location.search).get('storeId') || new URLSearchParams(window.location.search).get('userId') || '')
+    : '';
 
   // If accessed directly via customer self-order link (?mode=customer_menu), render the Customer Dashboard immediately
   if (isDirectCustomerMenu) {
-    const storeProducts = products.length > 0
-      ? (targetStoreId === 'user-admin' || targetStoreId === 'admin'
-          ? products.filter(p => !p.userId || p.userId === 'user-admin' || p.userId === 'admin')
-          : products.filter(p => p.userId === targetStoreId))
-      : INITIAL_PRODUCTS;
+    const targetUser = users.find(u => 
+      (rawStoreId && (u.id === rawStoreId || u.username.toLowerCase() === rawStoreId.toLowerCase()))
+    );
 
-    const displayProducts = storeProducts.length > 0 ? storeProducts : (products.length > 0 ? products : INITIAL_PRODUCTS);
+    const resolvedStoreId = targetUser ? targetUser.id : (rawStoreId || 'user-admin');
+    const storeOwnerName = targetUser?.fullName || (resolvedStoreId === 'user-admin' ? (settings.shopNameKh || settings.shopName) : resolvedStoreId);
+
+    // Strict Account Isolation: NEVER leak or mix products from different store accounts
+    const storeProducts = (resolvedStoreId === 'user-admin' || resolvedStoreId === 'admin')
+      ? products.filter(p => !p.userId || p.userId === 'user-admin' || p.userId === 'admin')
+      : products.filter(p => p.userId === resolvedStoreId);
+
+    // Dedicated isolated store configuration
+    const storeSettings: ShopSettings = {
+      ...settings,
+      shopName: targetUser?.fullName || settings.shopName,
+      shopNameKh: targetUser?.fullName || settings.shopNameKh,
+      phone: targetUser?.phone || settings.phone,
+      email: targetUser?.email || settings.email,
+      khqrImage: targetUser?.khqrImage || (targetUser?.role === 'admin' ? settings.khqrImage : ''),
+      khqrMerchantName: targetUser?.khqrMerchantName || targetUser?.fullName || settings.khqrMerchantName,
+      khqrAccountName: targetUser?.khqrAccountName || targetUser?.fullName || settings.khqrAccountName,
+      khqrAccountNumber: targetUser?.khqrAccountNumber || (targetUser?.role === 'admin' ? settings.khqrAccountNumber : ''),
+      khqrBankName: targetUser?.khqrBankName || settings.khqrBankName
+    };
 
     return (
       <CustomerCatalogView
-        products={displayProducts}
-        settings={settings}
+        products={storeProducts}
+        settings={storeSettings}
         language={language}
         isStandalone={true}
-        storeId={targetStoreId}
+        storeId={resolvedStoreId}
+        storeOwnerName={storeOwnerName}
         onOrderSubmitted={(newOrd) => {
-          console.log('Customer online order submitted:', newOrd);
+          console.log('Customer online order submitted for store:', resolvedStoreId, newOrd);
         }}
       />
     );
@@ -911,12 +937,24 @@ export default function App() {
               <div className="w-full flex justify-center py-1 sm:py-2">
                 <div className="w-full max-w-md sm:max-w-xl md:max-w-2xl bg-white rounded-3xl shadow-xl border border-slate-200/90 overflow-hidden min-h-[640px]">
                   <CustomerCatalogView
-                    products={userProducts.length > 0 ? userProducts : INITIAL_PRODUCTS}
-                    settings={settings}
+                    products={userProducts}
+                    settings={{
+                      ...settings,
+                      shopName: currentUser.fullName || settings.shopName,
+                      shopNameKh: currentUser.fullName || settings.shopNameKh,
+                      phone: currentUser.phone || settings.phone,
+                      email: currentUser.email || settings.email,
+                      khqrImage: currentUser.khqrImage || (currentUser.role === 'admin' ? settings.khqrImage : ''),
+                      khqrMerchantName: currentUser.khqrMerchantName || currentUser.fullName || settings.khqrMerchantName,
+                      khqrAccountName: currentUser.khqrAccountName || currentUser.fullName || settings.khqrAccountName,
+                      khqrAccountNumber: currentUser.khqrAccountNumber || (currentUser.role === 'admin' ? settings.khqrAccountNumber : ''),
+                      khqrBankName: currentUser.khqrBankName || settings.khqrBankName
+                    }}
                     language={language}
                     onBackToPos={() => setActiveView('pos')}
                     isStandalone={false}
                     storeId={currentUser.id}
+                    storeOwnerName={currentUser.fullName}
                   />
                 </div>
               </div>
@@ -1003,6 +1041,7 @@ export default function App() {
         onClose={() => setIsCustomerMenuShareOpen(false)}
         settings={settings}
         language={language}
+        currentUser={currentUser}
         currentUserId={currentUser?.id || 'user-admin'}
         onOpenPreview={() => {
           setActiveView('customer_menu_preview');

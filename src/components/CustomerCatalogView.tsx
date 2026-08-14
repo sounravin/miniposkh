@@ -33,6 +33,7 @@ interface CustomerCatalogViewProps {
   onBackToPos?: () => void;
   isStandalone?: boolean;
   storeId?: string;
+  storeOwnerName?: string;
   onOrderSubmitted?: (newOrder: Order) => void;
 }
 
@@ -43,6 +44,7 @@ export const CustomerCatalogView: React.FC<CustomerCatalogViewProps> = ({
   onBackToPos,
   isStandalone = false,
   storeId,
+  storeOwnerName,
   onOrderSubmitted
 }) => {
   const [language, setLanguage] = useState<'en' | 'kh'>(initialLanguage || 'kh');
@@ -181,7 +183,11 @@ export const CustomerCatalogView: React.FC<CustomerCatalogViewProps> = ({
       if (typeof window !== 'undefined') {
         try {
           const bc = new BroadcastChannel('minipos_online_orders');
-          bc.postMessage({ type: 'NEW_CUSTOMER_ORDER', order: newOrder });
+          bc.postMessage({ 
+            type: 'NEW_CUSTOMER_ORDER', 
+            order: newOrder,
+            targetUserId: storeId || 'user-admin'
+          });
           bc.close();
         } catch {
           // ignore if broadcast channel not supported
@@ -190,7 +196,8 @@ export const CustomerCatalogView: React.FC<CustomerCatalogViewProps> = ({
         try {
           localStorage.setItem('minipos_latest_online_order', JSON.stringify({
             timestamp: Date.now(),
-            order: newOrder
+            order: newOrder,
+            targetUserId: storeId || 'user-admin'
           }));
         } catch {
           // ignore
@@ -249,9 +256,16 @@ export const CustomerCatalogView: React.FC<CustomerCatalogViewProps> = ({
                     {isKh ? 'បើក' : 'Open'}
                   </span>
                 </div>
-                <p className="text-[11px] sm:text-xs text-slate-500 font-medium flex items-center gap-1 mt-0.5 truncate">
+                <p className="text-[11px] sm:text-xs text-slate-500 font-medium flex items-center gap-1.5 mt-0.5 truncate">
                   <Store className="w-3 h-3 text-indigo-600 shrink-0" />
-                  <span className="truncate">{isKh ? 'ម៉ឺនុយកុម្ម៉ង់ទំនិញអនឡាញ' : 'Online Menu'}</span>
+                  <span className="truncate">
+                    {storeOwnerName ? (isKh ? `ហាង៖ ${storeOwnerName}` : `Store: ${storeOwnerName}`) : (isKh ? 'ម៉ឺនុយកុម្ម៉ង់ទំនិញអនឡាញ' : 'Online Menu')}
+                  </span>
+                  {storeId && (
+                    <span className="font-mono text-[9px] bg-slate-100 text-slate-600 px-1.5 py-0.2 rounded font-bold shrink-0">
+                      {storeId}
+                    </span>
+                  )}
                 </p>
               </div>
             </div>
@@ -385,7 +399,27 @@ export const CustomerCatalogView: React.FC<CustomerCatalogViewProps> = ({
 
       {/* 4. Products Grid */}
       <main className="max-w-6xl mx-auto px-3 sm:px-4 py-2">
-        {filteredProducts.length === 0 ? (
+        {products.length === 0 ? (
+          <div className="p-8 sm:p-12 text-center bg-white rounded-3xl border border-slate-200/80 shadow-2xs space-y-3 max-w-lg mx-auto my-6">
+            <div className="w-16 h-16 rounded-3xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto shadow-2xs">
+              <Store className="w-8 h-8" />
+            </div>
+            <h3 className="text-base sm:text-lg font-black text-slate-800">
+              {isKh ? 'ហាងមិនទាន់មានទំនិញដាក់លក់នៅឡើយទេ' : 'No Products Listed in This Store Yet'}
+            </h3>
+            <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
+              {isKh 
+                ? `ហាង "${storeOwnerName || settings.shopNameKh || settings.shopName}" កំពុងរៀបចំបញ្ជីមុខទំនិញ។ សូមពិនិត្យម្តងទៀតនៅពេលក្រោយ!` 
+                : `Store "${storeOwnerName || settings.shopName}" has not added any products yet.`}
+            </p>
+            {settings.phone && (
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold font-mono">
+                <Phone className="w-3.5 h-3.5 text-indigo-600" />
+                <span>{settings.phone}</span>
+              </div>
+            )}
+          </div>
+        ) : filteredProducts.length === 0 ? (
           <div className="p-8 sm:p-12 text-center bg-white rounded-3xl border border-slate-200/80 shadow-2xs space-y-3">
             <div className="w-14 h-14 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
               <Search className="w-7 h-7" />

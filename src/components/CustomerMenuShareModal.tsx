@@ -12,10 +12,13 @@ import {
   Send, 
   Printer, 
   Download,
-  Info
+  Info,
+  ShieldCheck,
+  Store,
+  UserCheck
 } from 'lucide-react';
 import QRCode from 'qrcode';
-import { ShopSettings } from '../types';
+import { ShopSettings, User } from '../types';
 import { Logo } from './Logo';
 
 interface CustomerMenuShareModalProps {
@@ -25,6 +28,7 @@ interface CustomerMenuShareModalProps {
   language: 'en' | 'kh';
   onOpenPreview: () => void;
   currentUserId?: string;
+  currentUser?: User | null;
 }
 
 export const CustomerMenuShareModal: React.FC<CustomerMenuShareModalProps> = ({
@@ -33,7 +37,8 @@ export const CustomerMenuShareModal: React.FC<CustomerMenuShareModalProps> = ({
   settings,
   language,
   onOpenPreview,
-  currentUserId
+  currentUserId,
+  currentUser
 }) => {
   const [copied, setCopied] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
@@ -41,8 +46,12 @@ export const CustomerMenuShareModal: React.FC<CustomerMenuShareModalProps> = ({
 
   const isKh = language === 'kh';
 
-  // Build the shareable link for customer self-order menu scoped to this store/user account
-  const storeParam = currentUserId ? `&storeId=${encodeURIComponent(currentUserId)}` : '';
+  // Build the strictly isolated shareable link for customer self-order menu scoped to this store/user account
+  const storeId = currentUser?.id || currentUserId || 'user-admin';
+  const merchantName = currentUser?.fullName || settings.shopNameKh || settings.shopName || 'MINI MART';
+  const usernameTag = currentUser?.username ? `@${currentUser.username}` : '';
+
+  const storeParam = storeId ? `&storeId=${encodeURIComponent(storeId)}` : '';
   const menuUrl = typeof window !== 'undefined' 
     ? `${window.location.origin}${window.location.pathname}?mode=customer_menu${storeParam}`
     : `https://miniposkh.app/?mode=customer_menu${storeParam}`;
@@ -92,8 +101,8 @@ export const CustomerMenuShareModal: React.FC<CustomerMenuShareModalProps> = ({
   const handleShareTelegram = () => {
     const text = encodeURIComponent(
       isKh 
-        ? `សូមចូលកុម្ម៉ង់ទំនិញតាមតំណភ្ជាប់នេះពីហាង ${settings.shopNameKh || settings.shopName}:\n${menuUrl}`
-        : `Order online from ${settings.shopName}:\n${menuUrl}`
+        ? `សូមចូលកុម្ម៉ង់ទំនិញតាមតំណភ្ជាប់នេះពីហាង ${merchantName}:\n${menuUrl}`
+        : `Order online from ${merchantName}:\n${menuUrl}`
     );
     window.open(`https://t.me/share/url?url=${encodeURIComponent(menuUrl)}&text=${text}`, '_blank');
   };
@@ -101,8 +110,8 @@ export const CustomerMenuShareModal: React.FC<CustomerMenuShareModalProps> = ({
   const handleShareWhatsApp = () => {
     const text = encodeURIComponent(
       isKh 
-        ? `សូមចូលកុម្ម៉ង់ទំនិញពីហាង ${settings.shopNameKh || settings.shopName}: ${menuUrl}`
-        : `Order online from ${settings.shopName}: ${menuUrl}`
+        ? `សូមចូលកុម្ម៉ង់ទំនិញពីហាង ${merchantName}: ${menuUrl}`
+        : `Order online from ${merchantName}: ${menuUrl}`
     );
     window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
   };
@@ -111,7 +120,7 @@ export const CustomerMenuShareModal: React.FC<CustomerMenuShareModalProps> = ({
     if (!qrDataUrl) return;
     const a = document.createElement('a');
     a.href = qrDataUrl;
-    a.download = `minipos-menu-qr-${Date.now()}.png`;
+    a.download = `minipos-menu-${storeId}-${Date.now()}.png`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -124,7 +133,7 @@ export const CustomerMenuShareModal: React.FC<CustomerMenuShareModalProps> = ({
       <!DOCTYPE html>
       <html>
         <head>
-          <title>QR Code Menu - ${settings.shopName}</title>
+          <title>QR Code Menu - ${merchantName}</title>
           <style>
             body {
               font-family: system-ui, -apple-system, sans-serif;
@@ -151,15 +160,28 @@ export const CustomerMenuShareModal: React.FC<CustomerMenuShareModalProps> = ({
               padding: 6px 14px;
               border-radius: 999px;
             }
+            .store-tag {
+              display: inline-block;
+              margin-top: 10px;
+              font-size: 11px;
+              font-weight: bold;
+              color: #4f46e5;
+              background: #f1f5f9;
+              padding: 4px 10px;
+              border-radius: 6px;
+            }
           </style>
         </head>
         <body>
           <div class="card">
             <span class="badge">${isKh ? 'ស្កេនកុម្ម៉ង់ទំនិញភ្លាមៗ' : 'SCAN TO ORDER ONLINE'}</span>
-            <h1>${isKh ? settings.shopNameKh || settings.shopName : settings.shopName}</h1>
+            <h1>${merchantName}</h1>
             <p>${isKh ? 'បើកកាមេរ៉ាស្កេន QR Code ដើម្បីមើលមុខទំនិញ & កុម្ម៉ង់' : 'Scan this QR code with phone camera to order'}</p>
             <img src="${qrDataUrl}" alt="QR Code" />
-            <p style="font-size: 11px; font-weight: bold; color: #4f46e5;">MINI MART POS • Customer Self-Order</p>
+            <div>
+              <span class="store-tag">ID: ${storeId} ${usernameTag}</span>
+            </div>
+            <p style="font-size: 11px; font-weight: bold; color: #4f46e5; margin-top: 15px;">MINI MART POS • Dedicated Store Menu</p>
           </div>
           <script>
             window.onload = function() { window.print(); window.close(); }
@@ -182,10 +204,10 @@ export const CustomerMenuShareModal: React.FC<CustomerMenuShareModalProps> = ({
             </div>
             <div className="min-w-0">
               <h3 className="font-black text-sm sm:text-lg tracking-tight truncate">
-                {isKh ? 'តំណភ្ជាប់ម៉ឺនុយអតិថិជន' : 'Customer Menu Link & QR'}
+                {isKh ? 'តំណភ្ជាប់ម៉ឺនុយអតិថិជនដាច់ដោយឡែក' : 'Isolated Customer Menu Link & QR'}
               </h3>
               <p className="text-[11px] sm:text-xs text-indigo-200 font-medium truncate">
-                {isKh ? 'ចែករំលែក Link ឬ QR Code ទៅកាន់អតិថិជន' : 'Share QR code or link for self-ordering'}
+                {isKh ? `គណនី៖ ${merchantName}` : `Store Account: ${merchantName}`}
               </p>
             </div>
           </div>
@@ -199,32 +221,50 @@ export const CustomerMenuShareModal: React.FC<CustomerMenuShareModalProps> = ({
         </div>
 
         {/* Modal Content (Scrollable & Optimized for iPhone) */}
-        <div className="p-3.5 sm:p-6 space-y-3.5 sm:space-y-5 flex-1 overflow-y-auto overscroll-contain">
+        <div className="p-3.5 sm:p-6 space-y-3.5 sm:space-y-4 flex-1 overflow-y-auto overscroll-contain">
           
+          {/* Account Isolation Notice Banner */}
+          <div className="p-3 bg-emerald-50 border border-emerald-200/80 rounded-2xl flex items-start gap-2.5 text-emerald-900 shadow-2xs">
+            <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+            <div className="text-xs leading-relaxed">
+              <div className="font-bold flex items-center gap-1.5 flex-wrap">
+                <span>{isKh ? 'តំណភ្ជាប់ដាច់ដោយឡែក ១០០%' : '100% Isolated Account Link'}</span>
+                <span className="px-2 py-0.2 rounded-md bg-emerald-200/80 text-emerald-900 text-[10px] font-mono font-bold">
+                  {storeId}
+                </span>
+              </div>
+              <p className="text-[11px] text-emerald-800/90 mt-0.5">
+                {isKh 
+                  ? `តំណភ្ជាប់នេះគឺសម្រាប់តែគណនី "${merchantName}" របស់អ្នកប៉ុណ្ណោះ។ ទំនិញ និងការកុម្ម៉ង់របស់អតិថិជននឹងចូលមកកាន់គណនីនេះផ្ទាល់ មិនច្រឡូកច្រឡំជាមួយគណនីផ្សេងៗឡើយ។` 
+                  : `This link belongs exclusively to "${merchantName}". Products and customer orders route strictly to this account and never mix with others.`}
+              </p>
+            </div>
+          </div>
+
           {/* Main QR Card */}
-          <div className="p-3.5 sm:p-5 bg-slate-50 rounded-2xl sm:rounded-3xl border border-slate-200/80 flex flex-col sm:flex-row items-center gap-3.5 sm:gap-5 text-center sm:text-left">
+          <div className="p-3.5 sm:p-4 bg-slate-50 rounded-2xl sm:rounded-3xl border border-slate-200/80 flex flex-col sm:flex-row items-center gap-3.5 sm:gap-4 text-center sm:text-left">
             <div className="bg-white p-2.5 sm:p-3 rounded-2xl shadow-xs border border-slate-200/70 shrink-0">
               {qrDataUrl ? (
                 <img
                   src={qrDataUrl}
                   alt="Customer Menu QR Code"
-                  className="w-32 h-32 sm:w-40 sm:h-40 object-contain rounded-lg mx-auto"
+                  className="w-32 h-32 sm:w-36 sm:h-36 object-contain rounded-lg mx-auto"
                 />
               ) : (
-                <div className="w-32 h-32 sm:w-40 sm:h-40 flex items-center justify-center text-slate-400">
+                <div className="w-32 h-32 sm:w-36 sm:h-36 flex items-center justify-center text-slate-400">
                   <span className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
                 </div>
               )}
             </div>
 
-            <div className="space-y-2.5 sm:space-y-3 flex-1 min-w-0">
+            <div className="space-y-2 sm:space-y-2.5 flex-1 min-w-0">
               <div className="space-y-1">
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold uppercase tracking-wide">
-                  <Sparkles className="w-3 h-3 text-emerald-600" />
-                  {isKh ? 'ដំណើរការ Live 24/7' : 'Live Self-Order'}
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800 text-[10px] font-extrabold uppercase tracking-wide">
+                  <Store className="w-3 h-3 text-indigo-600" />
+                  {merchantName}
                 </span>
-                <h4 className="font-extrabold text-xs sm:text-base text-slate-900">
-                  {isKh ? 'ស្កេនកុម្ម៉ង់ទំនិញភ្លាមៗ' : 'Scan to View & Order'}
+                <h4 className="font-extrabold text-xs sm:text-sm text-slate-900">
+                  {isKh ? 'ស្កេនកុម្ម៉ង់ទំនិញពីហាងរបស់អ្នក' : 'Scan to View & Order From Your Store'}
                 </h4>
                 <p className="text-[11px] sm:text-xs text-slate-500 leading-relaxed">
                   {isKh 
@@ -258,9 +298,14 @@ export const CustomerMenuShareModal: React.FC<CustomerMenuShareModalProps> = ({
 
           {/* 1-Click Copy Direct Link Box */}
           <div className="space-y-1.5">
-            <label className="block text-[11px] sm:text-xs font-bold text-slate-700">
-              {isKh ? 'តំណភ្ជាប់ផ្ទាល់ (Direct Customer URL)' : 'Direct Customer Ordering Link'}
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="block text-[11px] sm:text-xs font-bold text-slate-700">
+                {isKh ? 'តំណភ្ជាប់ផ្ទាល់ (Direct Customer URL)' : 'Direct Customer Ordering Link'}
+              </label>
+              <span className="text-[10px] text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded">
+                storeId={storeId}
+              </span>
+            </div>
             <div className="flex items-center gap-2">
               <div className="flex-1 bg-slate-100 border border-slate-200 px-3 py-2 sm:py-2.5 rounded-xl text-[11px] sm:text-xs font-mono text-slate-700 truncate select-all">
                 {menuUrl}
@@ -364,3 +409,4 @@ export const CustomerMenuShareModal: React.FC<CustomerMenuShareModalProps> = ({
     </div>
   );
 };
+
