@@ -1,0 +1,83 @@
+<svg viewBox="0 0 512 512" width="512" height="512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Outer Blue Circular Border -->
+  <circle cx="256" cy="256" r="236" stroke="#0084b4" stroke-width="26" fill="#ffffff" />
+
+  <!-- Base Concentric Radar Rings -->
+  <ellipse cx="256" cy="335" rx="115" ry="24" stroke="#0088b4" stroke-width="9" fill="none" />
+  <ellipse cx="256" cy="335" rx="80" ry="16" stroke="#0088b4" stroke-width="8" fill="none" />
+
+  <!-- 3 Ascending Growth Arrows -->
+  <!-- Arrow 1: Light Green -->
+  <g stroke="#22c55e" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M260 148 L286 118" />
+    <path d="M268 116 L286 118 L284 136" />
+  </g>
+  <!-- Arrow 2: Emerald Green -->
+  <g stroke="#10b981" stroke-width="12" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M290 134 L318 102" />
+    <path d="M300 100 L318 102 L316 120" />
+  </g>
+  <!-- Arrow 3: Orange -->
+  <g stroke="#f97316" stroke-width="13" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M320 116 L354 80" />
+    <path d="M334 78 L354 80 L352 98" />
+  </g>
+
+  <!-- POS Terminal Body -->
+  <path 
+    d="M220 156 L318 156 C332 156 340 168 335 182 L302 298 C298 310 286 320 272 320 L200 320 C186 320 176 308 180 294 L212 172 C214 162 217 156 220 156 Z" 
+    fill="#0284c7" 
+  />
+  <!-- Terminal Stand Shadow / Back Base -->
+  <path d="M302 208 L340 232 L322 284 L294 274 Z" fill="#0369a1" />
+
+  <!-- Screen Bezel & Glass -->
+  <path d="M230 170 L308 170 L286 248 L208 248 Z" fill="#e0f2fe" />
+  <!-- Screen Glare Highlight -->
+  <path d="M276 174 L300 174 L258 244 L234 244 Z" fill="white" opacity="0.65" />
+
+  <!-- Keypad Buttons on POS -->
+  <rect x="210" y="262" width="24" height="13" rx="3" fill="white" />
+  <rect x="242" y="262" width="24" height="13" rx="3" fill="white" />
+  <rect x="216" y="284" width="46" height="12" rx="3" fill="white" />
+
+  <!-- Shopping Cart (Amber & Orange) -->
+  <g transform="translate(42, 18)">
+    <!-- Cart Basket Body -->
+    <path 
+      d="M104 172 L128 172 L148 226 L210 226 L224 182 L138 182" 
+      stroke="#f59e0b" 
+      stroke-width="16" 
+      stroke-linecap="round" 
+      stroke-linejoin="round" 
+      fill="#f59e0b" 
+    />
+    <!-- Handle -->
+    <path d="M102 172 L120 172" stroke="#ea580c" stroke-width="14" stroke-linecap="round" />
+    <!-- Wheels -->
+    <circle cx="156" cy="248" r="12" fill="#ea580c" />
+    <circle cx="198" cy="248" r="12" fill="#ea580c" />
+  </g>
+
+  <!-- Brand Typography: MINI MART POS -->
+  <text 
+    x="256" 
+    y="392" 
+    text-anchor="middle" 
+    font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Montserrat', sans-serif" 
+    font-weight="900" 
+    font-size="44" 
+    letter-spacing="2" 
+    fill="#08426b"
+  >MINI MART</text>
+  <text 
+    x="256" 
+    y="442" 
+    text-anchor="middle" 
+    font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Montserrat', sans-serif" 
+    font-weight="900" 
+    font-size="46" 
+    letter-spacing="4" 
+    fill="#08426b"
+  >POS</text>
+</svg>

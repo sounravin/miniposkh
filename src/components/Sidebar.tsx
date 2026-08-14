@@ -104,7 +104,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <Logo size={42} variant="badge" />
             <div className="min-w-0">
               <h1 className="font-extrabold text-base text-slate-800 tracking-tight flex items-center gap-1.5 leading-tight truncate">
-                MINI-POS-KH
+                MINI MART POS
                 <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
               </h1>
               <p className="text-[11px] text-slate-400 font-medium tracking-wide truncate">

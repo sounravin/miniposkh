@@ -53,7 +53,7 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({
             <h4 className="font-bold text-sm text-slate-800">Store Information (ព័ត៌មានហាង)</h4>
           </div>
           <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">
-            MINI-POS-KH System
+            MINI MART POS
           </span>
         </div>
 
@@ -62,7 +62,7 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({
           <Logo size={52} variant="badge" />
           <div>
             <span className="text-xs font-bold text-slate-800 block">System Logo & Branding</span>
-            <span className="text-[11px] text-slate-500">Official vector artwork active for MINI-POS-KH</span>
+            <span className="text-[11px] text-slate-500">Official vector artwork active for MINI MART POS</span>
           </div>
         </div>
 

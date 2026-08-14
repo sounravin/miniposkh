@@ -100,20 +100,18 @@ export const WelcomeAuthPage: React.FC<WelcomeAuthPageProps> = ({
       const cleanPass = (loginPassword || '').trim();
 
       if (!cleanIdent) {
-        setErrorMessage(isKh ? 'សូមបញ្ចូលឈ្មោះគណនី ឬអ៊ីមែល!' : 'Please enter username or email.');
+        setErrorMessage(isKh ? 'សូមបញ្ចូលឈ្មោះគណនី ឬអ៊ីមែល!' : 'Please enter your username or email.');
         setLoading(false);
         return;
       }
 
-      // Check default admin shortcut
-      if ((cleanIdent === 'admin' || cleanIdent === 'administrator') && (cleanPass === 'admin' || cleanPass === '123' || cleanPass === 'admin123' || cleanPass === '')) {
-        const adminUser = users.find(u => u.username === 'admin') || DEFAULT_USERS[0];
-        logUserActivity(adminUser.id, adminUser.username, adminUser.role, 'LOGIN', 'Admin signed into system').catch(console.warn);
-        onLoginSuccess(adminUser);
+      if (!cleanPass) {
+        setErrorMessage(isKh ? 'សូមបញ្ចូលពាក្យសម្ងាត់ (Password)!' : 'Please enter your password.');
+        setLoading(false);
         return;
       }
 
-      // Combine users array and DEFAULT_USERS to ensure fallback availability
+      // Combine users array and DEFAULT_USERS to ensure all accounts are reachable
       const allKnownUsers = [...users, ...DEFAULT_USERS];
       
       const foundUser = allKnownUsers.find(u => 
@@ -123,7 +121,7 @@ export const WelcomeAuthPage: React.FC<WelcomeAuthPageProps> = ({
       );
 
       if (!foundUser) {
-        setErrorMessage(isKh ? 'រកមិនឃើញគណនីនេះទេ! សូមពិនិត្យឈ្មោះគណនី ឬចុច "ចូលភ្លាមៗ (Quick Access)"' : 'Account not found. Please check username or use Quick Access buttons below.');
+        setErrorMessage(isKh ? 'រកមិនឃើញគណនីនេះទេ! សូមពិនិត្យឈ្មោះគណនីឡើងវិញ។' : 'Account not found. Please check your username or email.');
         setLoading(false);
         return;
       }
@@ -134,23 +132,24 @@ export const WelcomeAuthPage: React.FC<WelcomeAuthPageProps> = ({
         return;
       }
 
-      // If user has a password, verify it (also allow '123' or 'admin' as universal dev fallback)
-      if (foundUser.password && cleanPass !== '' && foundUser.password !== cleanPass && cleanPass !== 'admin' && cleanPass !== '123') {
-        setErrorMessage(isKh ? 'ពាក្យសម្ងាត់មិនត្រឹមត្រូវទេ! (សាកល្បង admin ឬ 123)' : 'Incorrect password! (Try admin or 123)');
+      // Strict Password Verification: match user password exactly
+      const expectedPassword = foundUser.password || (foundUser.username === 'admin' ? 'admin' : '123');
+      if (cleanPass !== expectedPassword) {
+        setErrorMessage(isKh ? 'ពាក្យសម្ងាត់មិនត្រឹមត្រូវទេ! សូមពិនិត្យពាក្យសម្ងាត់របស់អ្នកឡើងវិញ។' : 'Incorrect password! Please check your password and try again.');
         setLoading(false);
         return;
       }
 
-      // Log in non-blocking
+      // Success: Log activity and grant access
+      setSuccessMessage(isKh ? `ចូលប្រព័ន្ធជោគជ័យ! សូមស្វាគមន៍ ${foundUser.fullName}...` : `Login successful! Welcome ${foundUser.fullName}...`);
       logUserActivity(foundUser.id, foundUser.username, foundUser.role, 'LOGIN', `${foundUser.fullName} logged in`).catch(console.warn);
       
-      onLoginSuccess(foundUser);
+      setTimeout(() => {
+        onLoginSuccess(foundUser);
+      }, 300);
     } catch (err: any) {
       console.error('Sign in error:', err);
-      // Fallback: Login as admin anyway
-      const fallback = DEFAULT_USERS[0];
-      onLoginSuccess(fallback);
-    } finally {
+      setErrorMessage(isKh ? 'មានបញ្ហាក្នុងការចូលគណនី សូមសាកល្បងម្ដងទៀត!' : 'Failed to sign in. Please try again.');
       setLoading(false);
     }
   };
@@ -215,7 +214,7 @@ export const WelcomeAuthPage: React.FC<WelcomeAuthPageProps> = ({
           <Logo size={44} variant="badge" />
           <div>
             <h1 className="text-lg font-black tracking-tight text-white">
-              MINI-POS-KH
+              MINI MART POS
             </h1>
             <p className="text-xs text-slate-400 font-medium">
               {isKh ? 'ប្រព័ន្ធគ្រប់គ្រងការលក់ និងស្តុកទំនិញទំនើប' : 'Smart Retail & Inventory Management Platform'}
@@ -253,7 +252,7 @@ export const WelcomeAuthPage: React.FC<WelcomeAuthPageProps> = ({
         <div className="lg:col-span-7 space-y-6">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-semibold">
             <Sparkles className="w-4 h-4 text-indigo-400" />
-            {isKh ? 'ប្រព័ន្ធលក់ជំនាន់ថ្មី MINI-POS-KH v2.5' : 'Next-Gen Retail POS System v2.5'}
+            {isKh ? 'ប្រព័ន្ធលក់ជំនាន់ថ្មី MINI MART POS v2.5' : 'Next-Gen Retail POS System v2.5'}
           </div>
 
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight leading-tight">
@@ -266,8 +265,8 @@ export const WelcomeAuthPage: React.FC<WelcomeAuthPageProps> = ({
 
           <p className="text-slate-300 text-sm sm:text-base leading-relaxed max-w-2xl">
             {isKh 
-              ? 'សូមស្វាគមន៍មកកាន់ MINI-POS-KH! ងាយស្រួល ឆាប់រហ័ស គាំទ្រការស្កេនបាកូដ ការទូទាត់ KHQR និងការ Upload រូបភាពទំនិញពីទូរស័ព្ទ iPhone យ៉ាងរលូន។' 
-              : 'Welcome to MINI-POS-KH! Fast, responsive POS with barcode scanner, live KHQR payment, camera upload from iPhone with auto image compression, and cloud-synced user management.'}
+              ? 'សូមស្វាគមន៍មកកាន់ MINI MART POS! ងាយស្រួល ឆាប់រហ័ស គាំទ្រការស្កេនបាកូដ ការទូទាត់ KHQR និងការ Upload រូបភាពទំនិញពីទូរស័ព្ទ iPhone យ៉ាងរលូន។' 
+              : 'Welcome to MINI MART POS! Fast, responsive POS with barcode scanner, live KHQR payment, camera upload from iPhone with auto image compression, and cloud-synced user management.'}
           </p>
         </div>
 
@@ -353,6 +352,7 @@ export const WelcomeAuthPage: React.FC<WelcomeAuthPageProps> = ({
                     <KeyRound className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                     <input
                       type={showPassword ? 'text' : 'password'}
+                      required
                       value={loginPassword}
                       onChange={(e) => setLoginPassword(e.target.value)}
                       placeholder="••••••••"
@@ -583,7 +583,7 @@ export const WelcomeAuthPage: React.FC<WelcomeAuthPageProps> = ({
 
       {/* Footer */}
       <footer className="px-6 lg:px-12 py-4 border-t border-white/10 text-center text-xs text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-2 z-10">
-        <p>© 2026 MINI-POS-KH Point of Sale & Retail Management. All rights reserved.</p>
+        <p>© 2026 MINI MART POS Point of Sale & Retail Management. All rights reserved.</p>
       </footer>
     </div>
   );

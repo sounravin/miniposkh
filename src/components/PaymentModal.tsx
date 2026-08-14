@@ -277,7 +277,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                   {isKh ? 'ស្កេនទូទាត់ជាមួយកម្មវិធីធនាគារ' : 'Scan with ABA, ACLEDA or any Bank App'}
                 </h5>
                 <p className="text-xs text-slate-500">
-                  Merchant: <strong className="text-slate-700">MINI-POS-KH</strong>
+                  Merchant: <strong className="text-slate-700">MINI MART POS</strong>
                 </p>
                 <div className="text-base font-bold text-slate-900 font-mono">
                   {formatUSD(total)} / {formatKHR(total, khrRate)}

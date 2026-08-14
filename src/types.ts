@@ -131,3 +131,15 @@ export type ActiveView =
   | 'settings'
   | 'admin_console';
 
+export interface AppNotification {
+  id: string;
+  title: string;
+  desc: string;
+  type: 'success' | 'warning' | 'info' | 'error';
+  category: 'order' | 'stock' | 'system' | 'expense';
+  read: boolean;
+  timestamp: string; // ISO string
+  linkView?: ActiveView;
+}
+
+

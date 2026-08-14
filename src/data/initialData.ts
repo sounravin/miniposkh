@@ -520,8 +520,8 @@ export const INITIAL_EXPENSES: Expense[] = [
 ];
 
 export const INITIAL_SETTINGS: ShopSettings = {
-  shopName: 'MINI-POS-KH',
-  shopNameKh: 'ប្រព័ន្ធគ្រប់គ្រងការលក់ MINI-POS-KH',
+  shopName: 'MINI MART POS',
+  shopNameKh: 'ប្រព័ន្ធគ្រប់គ្រងការលក់ MINI MART POS',
   address: '#88, Preah Norodom Blvd, Daun Penh, Phnom Penh',
   phone: '+855 12 888 999 / +855 98 777 666',
   taxRate: 0.08,

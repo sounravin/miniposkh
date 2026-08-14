@@ -10,10 +10,20 @@ import {
   LogOut,
   ShieldCheck,
   User as UserIcon,
-  ChevronDown
+  ChevronDown,
+  Package,
+  ShoppingCart,
+  AlertTriangle,
+  Info,
+  CheckCheck,
+  Trash2,
+  Volume2,
+  VolumeX,
+  ArrowRight
 } from 'lucide-react';
-import { Product, User } from '../types';
+import { Product, User, AppNotification, ActiveView } from '../types';
 import { Logo } from './Logo';
+import { sounds } from '../utils/audio';
 
 interface HeaderProps {
   products: Product[];
@@ -27,6 +37,11 @@ interface HeaderProps {
   onOpenAdminConsole?: () => void;
   onOpenProfileModal?: () => void;
   toggleMobileSidebar?: () => void;
+  notifications?: AppNotification[];
+  onMarkAllNotificationsRead?: () => void;
+  onRemoveNotification?: (id: string) => void;
+  onClearAllNotifications?: () => void;
+  onNavigateView?: (view: ActiveView) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -40,18 +55,62 @@ export const Header: React.FC<HeaderProps> = ({
   onLogout,
   onOpenAdminConsole,
   onOpenProfileModal,
-  toggleMobileSidebar
+  toggleMobileSidebar,
+  notifications = [],
+  onMarkAllNotificationsRead,
+  onRemoveNotification,
+  onClearAllNotifications,
+  onNavigateView
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const [activeNotifTab, setActiveNotifTab] = useState<'all' | 'stock' | 'order'>('all');
+  const [browserNotifPermission, setBrowserNotifPermission] = useState<NotificationPermission>(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      return Notification.permission;
+    }
+    return 'default';
+  });
+
   const searchInputRef = useRef<HTMLInputElement>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
 
   const isKh = language === 'kh';
+
+  // Real-time clock update
+  const [currentTime, setCurrentTime] = useState(new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const formattedDate = currentTime.toLocaleDateString(isKh ? 'km-KH' : 'en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
+
+  const formattedTime = currentTime.toLocaleTimeString(isKh ? 'km-KH' : 'en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true
+  });
+
+  // Filter products for fast search
+  const searchResults = searchQuery.trim() === '' ? [] : products.filter(p => {
+    const q = searchQuery.toLowerCase();
+    return (
+      p.name.toLowerCase().includes(q) ||
+      (p.nameKh && p.nameKh.includes(q)) ||
+      p.barcode.toLowerCase().includes(q) ||
+      p.category.toLowerCase().includes(q)
+    );
+  }).slice(0, 8);
 
   // Click outside to close menus
   useEffect(() => {
@@ -67,86 +126,52 @@ export const Header: React.FC<HeaderProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const [notifications, setNotifications] = useState([
-    {
-      id: 'n1',
-      title: isKh ? 'ការកុម្ម៉ង់បានទូទាត់ជោគជ័យ' : 'Order #ORD-1003 Completed',
-      desc: isKh ? 'ការទូទាត់ $33.01 បានទទួលតាមកាត POS' : 'Payment of $33.01 received via Card POS.',
-      type: 'success',
-      read: false,
-      time: 'Just now'
-    },
-    {
-      id: 'n2',
-      title: isKh ? 'ដំណឹងស្តុកទំនិញ៖ នំខេកសូកូឡា' : 'Stock Warning: Chocolate Cake',
-      desc: isKh ? 'ស្តុកដែលនៅសល់មានចំនួន ២០ កញ្ចប់' : 'Remaining stock is 20 units.',
-      type: 'warning',
-      read: false,
-      time: '10m ago'
-    },
-    {
-      id: 'n3',
-      title: isKh ? 'ចំណូលលក់ថ្ងៃនេះកើនឡើង' : 'Daily Sales Milestone Reached',
-      desc: isKh ? 'ការលក់ថ្ងៃនេះបានកើនឡើងលើស $1,000.00!' : 'Today sales crossed $1,000.00 milestone!',
-      type: 'info',
-      read: false,
-      time: '1h ago'
-    }
-  ]);
+  // Filter notifications by active tab
+  const filteredNotifications = notifications.filter(n => {
+    if (activeNotifTab === 'all') return true;
+    if (activeNotifTab === 'stock') return n.category === 'stock';
+    if (activeNotifTab === 'order') return n.category === 'order';
+    return true;
+  });
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  const markAllAsRead = () => {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-  };
-
-  const removeNotification = (id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
-  };
-
-  // Live timer clock
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  // Keyboard shortcut Ctrl + K / Cmd + K to focus search
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        searchInputRef.current?.focus();
-        setIsSearchOpen(true);
+  const requestBrowserPermission = async () => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      try {
+        const perm = await Notification.requestPermission();
+        setBrowserNotifPermission(perm);
+        if (perm === 'granted') {
+          new Notification(isKh ? 'MINI MART POS - ការជូនដំណឹង' : 'MINI MART POS Notifications', {
+            body: isKh ? 'ការជូនដំណឹងត្រូវបានបើកដំណើរការដោយជោគជ័យ!' : 'Notifications are now enabled!',
+            icon: '/apple-touch-icon.png'
+          });
+          sounds.playNotificationAlert();
+        }
+      } catch {
+        // Safe fallback
       }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+    }
+  };
 
-  // Filtered search results
-  const searchResults = searchQuery.trim() === '' ? [] : products.filter(p => 
-    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (p.nameKh && p.nameKh.includes(searchQuery)) ||
-    p.barcode.includes(searchQuery) ||
-    p.category.toLowerCase().includes(searchQuery.toLowerCase())
-  ).slice(0, 6);
-
-  const formattedDate = currentTime.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-  });
-
-  const formattedTime = currentTime.toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true
-  });
+  const formatRelativeTime = (isoString: string) => {
+    try {
+      const date = new Date(isoString);
+      const diffSec = Math.floor((Date.now() - date.getTime()) / 1000);
+      if (diffSec < 60) return isKh ? 'ទើបតែឥឡូវ' : 'Just now';
+      const diffMin = Math.floor(diffSec / 60);
+      if (diffMin < 60) return isKh ? `${diffMin} នាទីមុន` : `${diffMin}m ago`;
+      const diffHours = Math.floor(diffMin / 60);
+      if (diffHours < 24) return isKh ? `${diffHours} ម៉ោងមុន` : `${diffHours}h ago`;
+      return date.toLocaleDateString(isKh ? 'km-KH' : 'en-US', { month: 'short', day: 'numeric' });
+    } catch {
+      return isKh ? 'ទើបតែឥឡូវ' : 'Just now';
+    }
+  };
 
   return (
-    <header className="bg-white border-b border-slate-100 px-3 sm:px-6 py-2 sm:py-3.5 pt-safe flex items-center justify-between sticky top-0 z-30 w-full max-w-full">
+    <header className="bg-white border-b border-slate-200/80 sticky top-0 z-30 px-3 sm:px-6 py-2.5 flex items-center justify-between shadow-2xs gap-2">
+      {/* Left Area: Logo & Search */}
       <div className="flex items-center gap-2 sm:gap-4 flex-1 max-w-2xl min-w-0">
         {/* Mobile menu trigger & Mobile Brand Logo */}
         <div className="flex items-center gap-1 sm:gap-2 md:hidden shrink-0">
@@ -159,7 +184,7 @@ export const Header: React.FC<HeaderProps> = ({
               <Menu className="w-5 h-5" />
             </button>
           )}
-          <Logo size={28} variant="badge" />
+          <Logo size={32} variant="badge" />
         </div>
 
         {/* Global Search Bar */}
@@ -176,7 +201,7 @@ export const Header: React.FC<HeaderProps> = ({
                 setIsSearchOpen(true);
               }}
               onFocus={() => setIsSearchOpen(true)}
-              placeholder={isKh ? "ស្វែងរកទំនិញ..." : "Search product..."}
+              placeholder={isKh ? "ស្វែងរកទំនិញ ឬលេខបាកូដ..." : "Search product or barcode..."}
               className="w-full bg-slate-50 hover:bg-slate-100/80 focus:bg-white text-xs sm:text-sm text-slate-800 placeholder-slate-400 rounded-xl pl-7 sm:pl-9 pr-7 sm:pr-14 py-1.5 sm:py-2 border border-slate-200/80 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
             />
             {searchQuery ? (
@@ -229,7 +254,9 @@ export const Header: React.FC<HeaderProps> = ({
                     </div>
                     <div className="text-right shrink-0 ml-2">
                       <div className="text-xs sm:text-sm font-bold text-slate-900">${item.price.toFixed(2)}</div>
-                      <div className="text-[10px] sm:text-[11px] text-emerald-600 font-medium">Stock: {item.stock}</div>
+                      <div className={`text-[10px] sm:text-[11px] font-bold ${item.stock <= 5 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                        Stock: {item.stock}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -281,59 +308,179 @@ export const Header: React.FC<HeaderProps> = ({
               setShowProfileMenu(false);
             }}
             id="header-notification-btn"
-            className="relative p-2 rounded-xl text-slate-500 hover:bg-slate-100 active:bg-slate-200 transition-colors cursor-pointer"
+            className="relative p-2 rounded-xl text-slate-600 hover:bg-slate-100 active:bg-slate-200 transition-colors cursor-pointer"
             aria-label="Notifications"
+            title={isKh ? "ការជូនដំណឹង" : "Notifications"}
           >
-            <Bell className="w-5 h-5" />
+            <Bell className="w-5 h-5 text-slate-700" />
             {unreadCount > 0 && (
               <span className="absolute top-1 right-1 w-4 h-4 bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white animate-pulse">
-                {unreadCount}
+                {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}
           </button>
 
           {showNotifications && (
-            <div className="absolute right-0 top-full mt-2 w-80 max-w-[90vw] bg-white rounded-2xl shadow-2xl border border-slate-100 p-3.5 z-50 animate-in fade-in zoom-in-95">
-              <div className="flex items-center justify-between pb-2.5 border-b border-slate-100">
+            <div className="absolute right-0 top-full mt-2 w-84 sm:w-96 max-w-[92vw] bg-white rounded-3xl shadow-2xl border border-slate-100 p-3.5 z-50 animate-in fade-in zoom-in-95 overflow-hidden flex flex-col">
+              {/* Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                    <Bell className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-900 leading-tight">
+                      {isKh ? 'ការជូនដំណឹង' : 'Notifications'}
+                    </h4>
+                    <p className="text-[10px] text-slate-400">
+                      {unreadCount > 0 
+                        ? (isKh ? `មាន ${unreadCount} មិនទាន់អាន` : `${unreadCount} unread alert${unreadCount > 1 ? 's' : ''}`)
+                        : (isKh ? 'បានអានទាំងអស់រួចរាល់' : 'All caught up')}
+                    </p>
+                  </div>
+                </div>
+
                 <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-bold text-slate-900">
-                    {isKh ? 'ការជូនដំណឹង (Notifications)' : 'Recent Alerts'}
-                  </span>
-                  {unreadCount > 0 && (
-                    <span className="text-[10px] bg-rose-100 text-rose-700 px-1.5 py-0.5 rounded-full font-bold">
-                      {unreadCount}
-                    </span>
+                  {onMarkAllNotificationsRead && unreadCount > 0 && (
+                    <button
+                      onClick={() => onMarkAllNotificationsRead()}
+                      className="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold px-2 py-1 bg-indigo-50 rounded-lg cursor-pointer flex items-center gap-1"
+                    >
+                      <CheckCheck className="w-3 h-3" />
+                      <span>{isKh ? 'អានទាំងអស់' : 'Mark all read'}</span>
+                    </button>
+                  )}
+                  {onClearAllNotifications && notifications.length > 0 && (
+                    <button
+                      onClick={() => onClearAllNotifications()}
+                      className="text-[10px] text-slate-400 hover:text-rose-600 p-1 rounded-lg hover:bg-rose-50 cursor-pointer"
+                      title={isKh ? 'លុបទាំងអស់' : 'Clear all'}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   )}
                 </div>
+              </div>
+
+              {/* Tabs */}
+              <div className="flex items-center gap-1 py-2 border-b border-slate-100 text-[11px] font-semibold">
                 <button
-                  onClick={markAllAsRead}
-                  className="text-[10px] text-indigo-600 hover:text-indigo-800 font-semibold cursor-pointer"
+                  onClick={() => setActiveNotifTab('all')}
+                  className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer ${
+                    activeNotifTab === 'all' 
+                      ? 'bg-slate-900 text-white shadow-xs' 
+                      : 'text-slate-500 hover:bg-slate-100'
+                  }`}
                 >
-                  {isKh ? 'សម្គាល់ថាបានអាន' : 'Mark all read'}
+                  {isKh ? 'ទាំងអស់' : 'All'} ({notifications.length})
+                </button>
+                <button
+                  onClick={() => setActiveNotifTab('stock')}
+                  className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer flex items-center gap-1 ${
+                    activeNotifTab === 'stock' 
+                      ? 'bg-amber-500 text-white shadow-xs' 
+                      : 'text-slate-500 hover:bg-slate-100'
+                  }`}
+                >
+                  <Package className="w-3 h-3" />
+                  <span>{isKh ? 'ស្តុកទំនិញ' : 'Stock'}</span>
+                </button>
+                <button
+                  onClick={() => setActiveNotifTab('order')}
+                  className={`px-2.5 py-1 rounded-lg transition-colors cursor-pointer flex items-center gap-1 ${
+                    activeNotifTab === 'order' 
+                      ? 'bg-emerald-600 text-white shadow-xs' 
+                      : 'text-slate-500 hover:bg-slate-100'
+                  }`}
+                >
+                  <ShoppingCart className="w-3 h-3" />
+                  <span>{isKh ? 'ការលក់' : 'Sales'}</span>
                 </button>
               </div>
 
+              {/* Push permission prompt banner if not enabled */}
+              {browserNotifPermission !== 'granted' && typeof window !== 'undefined' && 'Notification' in window && (
+                <div className="my-2 p-2 bg-indigo-50/80 border border-indigo-100 rounded-xl flex items-center justify-between gap-2">
+                  <div className="text-[10px] text-indigo-900 flex-1">
+                    <span className="font-bold">{isKh ? 'បើកការជូនដំណឹងទូរស័ព្ទ/កុំព្យូទ័រ' : 'Enable system notifications'}</span>
+                  </div>
+                  <button
+                    onClick={requestBrowserPermission}
+                    className="px-2 py-0.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[10px] font-bold shrink-0 cursor-pointer shadow-xs"
+                  >
+                    {isKh ? 'បើក' : 'Enable'}
+                  </button>
+                </div>
+              )}
+
+              {/* Notification List */}
               <div className="py-2 space-y-2 text-xs max-h-72 overflow-y-auto touch-scroll">
-                {notifications.length === 0 ? (
-                  <div className="py-6 text-center text-slate-400 text-xs">
-                    {isKh ? 'គ្មានការជូនដំណឹងថ្មីទេ' : 'No notifications'}
+                {filteredNotifications.length === 0 ? (
+                  <div className="py-8 text-center text-slate-400 text-xs flex flex-col items-center justify-center gap-1.5">
+                    <Bell className="w-6 h-6 text-slate-300 stroke-1" />
+                    <span>{isKh ? 'គ្មានការជូនដំណឹងថ្មីទេ' : 'No notifications'}</span>
                   </div>
                 ) : (
-                  notifications.map(n => (
+                  filteredNotifications.map(n => (
                     <div 
                       key={n.id}
-                      onClick={() => removeNotification(n.id)}
-                      className={`p-2.5 rounded-xl border flex flex-col gap-0.5 cursor-pointer transition-all ${
-                        n.type === 'success' ? 'bg-emerald-50/70 border-emerald-100 text-emerald-950 hover:bg-emerald-100/80' :
-                        n.type === 'warning' ? 'bg-amber-50/70 border-amber-100 text-amber-950 hover:bg-amber-100/80' :
-                        'bg-indigo-50/70 border-indigo-100 text-indigo-950 hover:bg-indigo-100/80'
+                      onClick={() => {
+                        if (n.linkView && onNavigateView) {
+                          onNavigateView(n.linkView);
+                          setShowNotifications(false);
+                        }
+                      }}
+                      className={`p-2.5 rounded-2xl border flex flex-col gap-1 transition-all relative group cursor-pointer ${
+                        n.type === 'warning' 
+                          ? 'bg-amber-50/60 border-amber-200/70 hover:bg-amber-100/70 text-amber-950' 
+                          : n.type === 'success'
+                          ? 'bg-emerald-50/60 border-emerald-200/70 hover:bg-emerald-100/70 text-emerald-950'
+                          : 'bg-indigo-50/60 border-indigo-200/70 hover:bg-indigo-100/70 text-indigo-950'
                       }`}
                     >
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-xs">{n.title}</span>
-                        <span className="text-[10px] text-slate-400 font-mono">{n.time}</span>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-1.5 font-bold text-xs">
+                          {n.type === 'warning' ? (
+                            <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                          ) : n.type === 'success' ? (
+                            <ShoppingCart className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          ) : (
+                            <Info className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                          )}
+                          <span className="truncate">{n.title}</span>
+                          {!n.read && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0 animate-ping" />
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] text-slate-400 font-mono shrink-0">
+                            {formatRelativeTime(n.timestamp)}
+                          </span>
+                          {onRemoveNotification && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onRemoveNotification(n.id);
+                              }}
+                              className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-slate-400 hover:text-rose-600 transition-opacity"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      <span className="text-[11px] opacity-80 leading-relaxed">{n.desc}</span>
+
+                      <p className="text-[11px] opacity-85 leading-relaxed pl-5">
+                        {n.desc}
+                      </p>
+
+                      {n.linkView && (
+                        <div className="pl-5 pt-0.5 flex items-center gap-1 text-[10px] font-bold text-indigo-600 group-hover:text-indigo-800">
+                          <span>{isKh ? 'ចុចដើម្បីពិនិត្យ' : 'View details'}</span>
+                          <ArrowRight className="w-2.5 h-2.5 group-hover:translate-x-0.5 transition-transform" />
+                        </div>
+                      )}
                     </div>
                   ))
                 )}

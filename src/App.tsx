@@ -9,7 +9,8 @@ import {
   ShopSettings, 
   ActiveView,
   User,
-  ActivityLog
+  ActivityLog,
+  AppNotification
 } from './types';
 import { 
   INITIAL_PRODUCTS, 
@@ -129,6 +130,104 @@ export default function App() {
     return (localStorage.getItem('minipos_lang') as 'en' | 'kh') || 'kh';
   });
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
+  // 2.1 Notifications Management Engine
+  const [notifications, setNotifications] = useState<AppNotification[]>(() => {
+    try {
+      const saved = localStorage.getItem('minipos_notifications');
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // Fallback
+    }
+    return [
+      {
+        id: 'notif-welcome-1',
+        title: 'ស្វាគមន៍មកកាន់ MINI MART POS',
+        desc: 'ប្រព័ន្ធគ្រប់គ្រងការលក់ និងស្តុកទំនិញត្រូវបានបើកដំណើរការដោយជោគជ័យ។',
+        type: 'info',
+        category: 'system',
+        read: false,
+        timestamp: new Date().toISOString()
+      }
+    ];
+  });
+
+  // Save notifications to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('minipos_notifications', JSON.stringify(notifications));
+    } catch (e) {
+      console.warn('Failed to save notifications:', e);
+    }
+  }, [notifications]);
+
+  // Dispatch / add a new notification with sound and system push
+  const addNotification = (notif: Omit<AppNotification, 'id' | 'timestamp' | 'read'>) => {
+    const newNotif: AppNotification = {
+      ...notif,
+      id: `notif-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      timestamp: new Date().toISOString(),
+      read: false
+    };
+
+    setNotifications(prev => [newNotif, ...prev.slice(0, 49)]);
+    sounds.playNotificationAlert();
+
+    // Trigger Native Browser Web Notification if allowed
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+      try {
+        new Notification(newNotif.title, {
+          body: newNotif.desc,
+          icon: '/apple-touch-icon.png'
+        });
+      } catch {
+        // Safe fallback
+      }
+    }
+  };
+
+  const handleMarkAllNotificationsRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  };
+
+  const handleRemoveNotification = (id: string) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  };
+
+  const handleClearAllNotifications = () => {
+    setNotifications([]);
+  };
+
+  // Automatically monitor and generate alerts for Low Stock (< 5)
+  useEffect(() => {
+    if (userProducts.length === 0) return;
+    const lowStockItems = userProducts.filter(p => p.stock <= 5);
+    if (lowStockItems.length > 0) {
+      setNotifications(prev => {
+        let next = [...prev];
+        let hasNew = false;
+        for (const item of lowStockItems) {
+          const alertId = `stock-alert-${item.id}`;
+          if (!next.some(n => n.id === alertId)) {
+            next.unshift({
+              id: alertId,
+              title: language === 'kh' ? `⚠️ ស្តុកទាប៖ ${item.name}` : `⚠️ Low Stock: ${item.name}`,
+              desc: language === 'kh'
+                ? `ទំនិញ "${item.name}" (#${item.barcode}) នៅសល់តែ ${item.stock} ឯកតាប៉ុណ្ណោះក្នុងស្តុក។`
+                : `Product "${item.name}" (#${item.barcode}) has only ${item.stock} unit(s) remaining.`,
+              type: 'warning',
+              category: 'stock',
+              read: false,
+              timestamp: new Date().toISOString(),
+              linkView: 'products'
+            });
+            hasNew = true;
+          }
+        }
+        return hasNew ? next : prev;
+      });
+    }
+  }, [userProducts, language]);
 
   // Initialize Firestore and Real-time Listeners
   useEffect(() => {
@@ -333,9 +432,22 @@ export default function App() {
       }
     }
 
-    // Close checkout and show receipt
+    // Complete Order & Save to Firestore
     setIsPaymentModalOpen(false);
     setActiveReceiptOrder(orderWithUser);
+
+    // Dispatch real-time sale notification
+    addNotification({
+      title: language === 'kh' 
+        ? `✅ ការកុម្ម៉ង់ #${orderWithUser.orderNumber} បានទូទាត់ជោគជ័យ` 
+        : `✅ Order #${orderWithUser.orderNumber} Paid`,
+      desc: language === 'kh'
+        ? `ទទួលបានសរុប ${orderWithUser.total.toFixed(2)} (${orderWithUser.totalKhr.toLocaleString()} ៛) តាម ${orderWithUser.paymentMethod.toUpperCase()} (${orderWithUser.customerName || 'ទូទៅ'})`
+        : `Received ${orderWithUser.total.toFixed(2)} (${orderWithUser.totalKhr.toLocaleString()} KHR) via ${orderWithUser.paymentMethod.toUpperCase()} (${orderWithUser.customerName || 'Walk-in'})`,
+      type: 'success',
+      category: 'order',
+      linkView: 'orders'
+    });
 
     // Reset current order
     setCartItems([]);
@@ -389,6 +501,17 @@ export default function App() {
       createdAt: newProd.createdAt || new Date().toISOString()
     };
     await saveProductToFirestore(prodWithUser);
+    
+    addNotification({
+      title: language === 'kh' ? `✨ បានបន្ថែមទំនិញ៖ ${prodWithUser.name}` : `✨ Product Added: ${prodWithUser.name}`,
+      desc: language === 'kh' 
+        ? `បានបញ្ចូលទៅក្នុងស្តុកចំនួន ${prodWithUser.stock} (តម្លៃ ${prodWithUser.price.toFixed(2)})`
+        : `Added to inventory with ${prodWithUser.stock} in stock (Price ${prodWithUser.price.toFixed(2)})`,
+      type: 'info',
+      category: 'stock',
+      linkView: 'products'
+    });
+
     if (currentUser) {
       await logUserActivity(currentUser.id, currentUser.username, currentUser.role, 'ADD_PRODUCT', `Added product "${prodWithUser.name}"`);
     }
@@ -420,8 +543,19 @@ export default function App() {
       userId: currentUser?.id || 'user-admin'
     };
     await saveExpenseToFirestore(expWithUser);
+    
+    addNotification({
+      title: language === 'kh' ? `💸 ចំណាយថ្មី៖ ${expense.title}` : `💸 New Expense: ${expense.title}`,
+      desc: language === 'kh'
+        ? `បានកត់ត្រាចំណាយទឹកប្រាក់ ${expense.amount.toFixed(2)} (${expense.category})`
+        : `Recorded expense of ${expense.amount.toFixed(2)} (${expense.category})`,
+      type: 'info',
+      category: 'expense',
+      linkView: 'expenses'
+    });
+
     if (currentUser) {
-      await logUserActivity(currentUser.id, currentUser.username, currentUser.role, 'ADD_EXPENSE', `Logged expense "${expense.title}" of $${expense.amount}`);
+      await logUserActivity(currentUser.id, currentUser.username, currentUser.role, 'ADD_EXPENSE', `Logged expense "${expense.title}" of ${expense.amount}`);
     }
   };
 
@@ -577,6 +711,11 @@ export default function App() {
           onOpenAdminConsole={() => setActiveView('admin_console')}
           onOpenProfileModal={() => setIsProfileModalOpen(true)}
           toggleMobileSidebar={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+          notifications={notifications}
+          onMarkAllNotificationsRead={handleMarkAllNotificationsRead}
+          onRemoveNotification={handleRemoveNotification}
+          onClearAllNotifications={handleClearAllNotifications}
+          onNavigateView={(v) => setActiveView(v)}
         />
 
         {/* Body View Router */}

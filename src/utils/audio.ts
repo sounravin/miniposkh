@@ -102,6 +102,36 @@ class SoundManager {
       // Ignore
     }
   }
+
+  // Notification alert chime (Two-tone warm bell)
+  public playNotificationAlert() {
+    try {
+      const ctx = this.getContext();
+      if (!ctx) return;
+      
+      const now = ctx.currentTime;
+      const notes = [659.25, 880.00]; // E5, A5
+      
+      notes.forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now + i * 0.12);
+        
+        gain.gain.setValueAtTime(0.14, now + i * 0.12);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.12 + 0.35);
+        
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        
+        osc.start(now + i * 0.12);
+        osc.stop(now + i * 0.12 + 0.35);
+      });
+    } catch {
+      // Ignore
+    }
+  }
 }
 
 export const sounds = new SoundManager();
