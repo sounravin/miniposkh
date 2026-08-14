@@ -209,10 +209,10 @@ export const WelcomeAuthPage: React.FC<WelcomeAuthPageProps> = ({
       <div className="absolute -bottom-40 left-1/3 w-96 h-96 bg-amber-600/15 rounded-full blur-3xl pointer-events-none" />
 
       {/* Mobile-Only Dedicated Phone UI Layout (< lg screens) */}
-      <div className="block lg:hidden w-full min-h-screen bg-slate-100 py-4 px-3 sm:px-6 relative z-10">
-        {/* Floating Language Switcher */}
-        <div className="flex justify-end mb-2">
-          <div className="inline-flex items-center gap-1 bg-white/90 backdrop-blur-sm p-1 rounded-xl border border-slate-200/80 shadow-2xs">
+      <div className="block lg:hidden w-full min-h-[100dvh] bg-slate-100 py-6 px-3 sm:px-6 relative z-10 flex flex-col justify-center items-center">
+        {/* Floating Language Switcher pinned at top right */}
+        <div className="absolute top-4 right-4 z-20">
+          <div className="inline-flex items-center gap-1 bg-white/90 backdrop-blur-sm p-1 rounded-xl border border-slate-200/80 shadow-xs">
             <button
               onClick={() => setLanguage('kh')}
               className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
@@ -233,7 +233,7 @@ export const WelcomeAuthPage: React.FC<WelcomeAuthPageProps> = ({
         </div>
 
         {/* Centered Mobile Card */}
-        <div className="w-full max-w-sm mx-auto bg-white/98 backdrop-blur-md rounded-3xl p-5 sm:p-6 shadow-xl border border-slate-200/80">
+        <div className="w-full max-w-sm mx-auto bg-white/98 backdrop-blur-md rounded-3xl p-5 sm:p-6 shadow-xl border border-slate-200/80 my-auto">
           
           {/* Circular Brand Logo */}
           <div className="flex justify-center pt-1 pb-4">
