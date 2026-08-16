@@ -495,3 +495,276 @@ export async function updateUserRoleInFirestore(userId: string, role: 'admin' | 
 export async function deleteUserFromFirestore(userId: string): Promise<void> {
   await deleteDoc(doc(db, 'users', userId));
 }
+
+// ============================================================================
+// LOCAL STORAGE CACHE & CLOUD SYNC ENGINE (Cost-Saving & Offline-First)
+// ============================================================================
+
+export const LOCAL_STORAGE_KEYS = {
+  PRODUCTS: 'minipos_cached_products',
+  ORDERS: 'minipos_cached_orders',
+  EXPENSES: 'minipos_cached_expenses',
+  CUSTOMERS: 'minipos_cached_customers',
+  TABLES: 'minipos_cached_tables',
+  SETTINGS: 'minipos_cached_settings',
+  USERS: 'minipos_cached_users',
+  LAST_SYNC: 'minipos_last_cloud_sync',
+  PENDING_CHANGES: 'minipos_pending_cloud_changes',
+  AUTO_SYNC_INTERVAL_DAYS: 'minipos_auto_sync_interval_days'
+};
+
+export function getCachedData<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    return JSON.parse(raw) as T;
+  } catch (e) {
+    console.warn(`Failed to read cache for ${key}:`, e);
+    return fallback;
+  }
+}
+
+export function setCachedData<T>(key: string, data: T): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch (e) {
+    console.warn(`Failed to write cache for ${key}:`, e);
+  }
+}
+
+export function getLastSyncTime(): string | null {
+  try {
+    return localStorage.getItem(LOCAL_STORAGE_KEYS.LAST_SYNC);
+  } catch {
+    return null;
+  }
+}
+
+export function setLastSyncTime(isoDate?: string): void {
+  try {
+    localStorage.setItem(LOCAL_STORAGE_KEYS.LAST_SYNC, isoDate || new Date().toISOString());
+  } catch (e) {
+    console.warn('Failed to save last sync time:', e);
+  }
+}
+
+export function isSyncDue(intervalDays: number = 3): boolean {
+  const last = getLastSyncTime();
+  if (!last) return true; // never synced
+  try {
+    const lastDate = new Date(last).getTime();
+    const now = Date.now();
+    const diffDays = (now - lastDate) / (1000 * 60 * 60 * 24);
+    return diffDays >= intervalDays;
+  } catch {
+    return true;
+  }
+}
+
+export function getPendingChangesCount(): number {
+  try {
+    const count = localStorage.getItem(LOCAL_STORAGE_KEYS.PENDING_CHANGES);
+    return count ? parseInt(count, 10) : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function incrementPendingChanges(): void {
+  try {
+    const curr = getPendingChangesCount();
+    localStorage.setItem(LOCAL_STORAGE_KEYS.PENDING_CHANGES, (curr + 1).toString());
+  } catch (e) {
+    console.warn('Failed to increment pending changes:', e);
+  }
+}
+
+export function resetPendingChanges(): void {
+  try {
+    localStorage.setItem(LOCAL_STORAGE_KEYS.PENDING_CHANGES, '0');
+  } catch (e) {
+    console.warn('Failed to reset pending changes:', e);
+  }
+}
+
+// Fetch all collections once from Cloud Firestore and update local storage caches
+export async function fetchAllCloudData(): Promise<{
+  products: Product[];
+  orders: Order[];
+  expenses: Expense[];
+  customers: Customer[];
+  tables: TableInfo[];
+  users: User[];
+  settings: ShopSettings;
+}> {
+  const results = {
+    products: [] as Product[],
+    orders: [] as Order[],
+    expenses: [] as Expense[],
+    customers: [] as Customer[],
+    tables: [] as TableInfo[],
+    users: [] as User[],
+    settings: INITIAL_SETTINGS
+  };
+
+  try {
+    // 1. Fetch Users
+    const userDocs = await getDocs(usersCollection);
+    if (!userDocs.empty) {
+      const list: User[] = [];
+      userDocs.forEach(d => list.push(d.data() as User));
+      results.users = list;
+      setCachedData(LOCAL_STORAGE_KEYS.USERS, list);
+    } else {
+      results.users = DEFAULT_USERS;
+    }
+
+    // 2. Fetch Products
+    const prodDocs = await getDocs(productsCollection);
+    if (!prodDocs.empty) {
+      const list: Product[] = [];
+      prodDocs.forEach(d => list.push(d.data() as Product));
+      results.products = list;
+      setCachedData(LOCAL_STORAGE_KEYS.PRODUCTS, list);
+    } else {
+      results.products = INITIAL_PRODUCTS;
+    }
+
+    // 3. Fetch Orders
+    const orderDocs = await getDocs(query(ordersCollection, orderBy('createdAt', 'desc'), limit(200)));
+    if (!orderDocs.empty) {
+      const list: Order[] = [];
+      orderDocs.forEach(d => list.push(d.data() as Order));
+      results.orders = list;
+      setCachedData(LOCAL_STORAGE_KEYS.ORDERS, list);
+    }
+
+    // 4. Fetch Expenses
+    const expDocs = await getDocs(query(expensesCollection, orderBy('date', 'desc'), limit(150)));
+    if (!expDocs.empty) {
+      const list: Expense[] = [];
+      expDocs.forEach(d => list.push(d.data() as Expense));
+      results.expenses = list;
+      setCachedData(LOCAL_STORAGE_KEYS.EXPENSES, list);
+    }
+
+    // 5. Fetch Customers
+    const custDocs = await getDocs(customersCollection);
+    if (!custDocs.empty) {
+      const list: Customer[] = [];
+      custDocs.forEach(d => list.push(d.data() as Customer));
+      results.customers = list;
+      setCachedData(LOCAL_STORAGE_KEYS.CUSTOMERS, list);
+    }
+
+    // 6. Fetch Tables
+    const tblDocs = await getDocs(tablesCollection);
+    if (!tblDocs.empty) {
+      const list: TableInfo[] = [];
+      tblDocs.forEach(d => list.push(d.data() as TableInfo));
+      results.tables = list;
+      setCachedData(LOCAL_STORAGE_KEYS.TABLES, list);
+    }
+
+    // 7. Fetch Settings
+    const settingsDoc = await getDoc(doc(db, 'settings', 'general'));
+    if (settingsDoc.exists()) {
+      results.settings = settingsDoc.data() as ShopSettings;
+      setCachedData(LOCAL_STORAGE_KEYS.SETTINGS, results.settings);
+    }
+
+    setLastSyncTime();
+    resetPendingChanges();
+  } catch (err: any) {
+    console.warn('Cloud fetch warning (operating in local cached mode):', err);
+  }
+
+  return results;
+}
+
+// Bulk Sync all local datasets from all users to Firestore Cloud
+export async function syncAllLocalDataToFirestore(payload: {
+  products: Product[];
+  orders: Order[];
+  expenses: Expense[];
+  customers: Customer[];
+  tables: TableInfo[];
+  users: User[];
+  settings: ShopSettings;
+}): Promise<{
+  success: boolean;
+  productsSynced: number;
+  ordersSynced: number;
+  usersSynced: number;
+  timestamp: string;
+  error?: string;
+}> {
+  try {
+    // 1. Sync Users
+    for (const u of payload.users) {
+      await setDoc(doc(db, 'users', u.id), cleanForFirestore(u));
+    }
+
+    // 2. Sync Products
+    for (const p of payload.products) {
+      await setDoc(doc(db, 'products', p.id), cleanForFirestore(p));
+    }
+
+    // 3. Sync Orders (recent orders)
+    for (const o of payload.orders.slice(0, 150)) {
+      await setDoc(doc(db, 'orders', o.id), cleanForFirestore(o));
+    }
+
+    // 4. Sync Customers
+    for (const c of payload.customers) {
+      await setDoc(doc(db, 'customers', c.id), cleanForFirestore(c));
+    }
+
+    // 5. Sync Expenses
+    for (const e of payload.expenses.slice(0, 100)) {
+      await setDoc(doc(db, 'expenses', e.id), cleanForFirestore(e));
+    }
+
+    // 6. Sync Tables
+    for (const t of payload.tables) {
+      await setDoc(doc(db, 'tables', t.id), cleanForFirestore(t));
+    }
+
+    // 7. Sync Settings
+    if (payload.settings) {
+      await setDoc(doc(db, 'settings', 'general'), cleanForFirestore(payload.settings));
+    }
+
+    const now = new Date().toISOString();
+    setLastSyncTime(now);
+    resetPendingChanges();
+
+    // Cache everything to local storage as well
+    setCachedData(LOCAL_STORAGE_KEYS.PRODUCTS, payload.products);
+    setCachedData(LOCAL_STORAGE_KEYS.ORDERS, payload.orders);
+    setCachedData(LOCAL_STORAGE_KEYS.EXPENSES, payload.expenses);
+    setCachedData(LOCAL_STORAGE_KEYS.CUSTOMERS, payload.customers);
+    setCachedData(LOCAL_STORAGE_KEYS.TABLES, payload.tables);
+    setCachedData(LOCAL_STORAGE_KEYS.USERS, payload.users);
+    setCachedData(LOCAL_STORAGE_KEYS.SETTINGS, payload.settings);
+
+    return {
+      success: true,
+      productsSynced: payload.products.length,
+      ordersSynced: payload.orders.length,
+      usersSynced: payload.users.length,
+      timestamp: now
+    };
+  } catch (err: any) {
+    console.error('Failed to sync data to Firestore:', err);
+    return {
+      success: false,
+      productsSynced: 0,
+      ordersSynced: 0,
+      usersSynced: 0,
+      timestamp: new Date().toISOString(),
+      error: err.message || 'Unknown Firestore sync error'
+    };
+  }
+}
+

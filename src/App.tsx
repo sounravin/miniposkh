@@ -65,7 +65,15 @@ import {
   saveTableToFirestore,
   saveSettingsToFirestore,
   logUserActivity,
-  DEFAULT_USERS
+  DEFAULT_USERS,
+  LOCAL_STORAGE_KEYS,
+  getCachedData,
+  setCachedData,
+  fetchAllCloudData,
+  syncAllLocalDataToFirestore,
+  isSyncDue,
+  incrementPendingChanges,
+  getLastSyncTime
 } from './lib/firestoreService';
 
 export default function App() {
@@ -79,16 +87,30 @@ export default function App() {
     }
   });
 
-  const [users, setUsers] = useState<User[]>(DEFAULT_USERS);
+  const [users, setUsers] = useState<User[]>(() => {
+    return getCachedData(LOCAL_STORAGE_KEYS.USERS, DEFAULT_USERS);
+  });
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
 
-  // 1. Persistent Data with Real-Time Firestore Synchronization
-  const [products, setProducts] = useState<Product[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [tables, setTables] = useState<TableInfo[]>([]);
-  const [settings, setSettings] = useState<ShopSettings>(INITIAL_SETTINGS);
+  // 1. Local-First Caching State with Periodic & Manual Cloud Synchronization
+  const [products, setProducts] = useState<Product[]>(() => {
+    return getCachedData(LOCAL_STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS);
+  });
+  const [orders, setOrders] = useState<Order[]>(() => {
+    return getCachedData(LOCAL_STORAGE_KEYS.ORDERS, INITIAL_ORDERS);
+  });
+  const [expenses, setExpenses] = useState<Expense[]>(() => {
+    return getCachedData(LOCAL_STORAGE_KEYS.EXPENSES, INITIAL_EXPENSES);
+  });
+  const [customers, setCustomers] = useState<Customer[]>(() => {
+    return getCachedData(LOCAL_STORAGE_KEYS.CUSTOMERS, INITIAL_CUSTOMERS);
+  });
+  const [tables, setTables] = useState<TableInfo[]>(() => {
+    return getCachedData(LOCAL_STORAGE_KEYS.TABLES, INITIAL_TABLES);
+  });
+  const [settings, setSettings] = useState<ShopSettings>(() => {
+    return getCachedData(LOCAL_STORAGE_KEYS.SETTINGS, INITIAL_SETTINGS);
+  });
 
   // Filter products, orders, expenses by user account (Multi-user Strict Data Isolation)
   const userProducts = React.useMemo(() => {
@@ -229,33 +251,48 @@ export default function App() {
     }
   }, [userProducts, language]);
 
-  // Initialize Firestore and Real-time Listeners
+  // Initialize Firestore and Real-time Listeners with Local-First Caching
   useEffect(() => {
     initializeFirestoreDatabase();
 
-    const unsubProducts = subscribeToProducts((cloudProds) => {
-      setProducts(cloudProds || []);
-    });
+    const doInitialSync = async () => {
+      try {
+        const cloudData = await fetchAllCloudData();
+        if (cloudData) {
+          if (cloudData.products && cloudData.products.length > 0) setProducts(cloudData.products);
+          if (cloudData.orders && cloudData.orders.length > 0) setOrders(cloudData.orders);
+          if (cloudData.expenses && cloudData.expenses.length > 0) setExpenses(cloudData.expenses);
+          if (cloudData.customers && cloudData.customers.length > 0) setCustomers(cloudData.customers);
+          if (cloudData.tables && cloudData.tables.length > 0) setTables(cloudData.tables);
+          if (cloudData.users && cloudData.users.length > 0) setUsers(cloudData.users);
+          if (cloudData.settings) setSettings(cloudData.settings);
+        }
 
-    const unsubOrders = subscribeToOrders((cloudOrders) => {
-      setOrders(cloudOrders || []);
-    });
+        // Auto-Sync if 2-3 days have elapsed
+        if (isSyncDue(3)) {
+          console.log('⏰ 3-Day Periodic Auto-Sync Triggered...');
+          await syncAllLocalDataToFirestore({
+            products,
+            orders,
+            expenses,
+            customers,
+            tables,
+            users,
+            settings
+          });
+        }
+      } catch (err) {
+        console.warn('Initial cloud sync warning:', err);
+      }
+    };
 
-    const unsubExpenses = subscribeToExpenses((cloudExpenses) => {
-      setExpenses(cloudExpenses || []);
-    });
+    doInitialSync();
 
-    const unsubCustomers = subscribeToCustomers((cloudCustomers) => {
-      setCustomers(cloudCustomers || []);
-    });
-
-    const unsubTables = subscribeToTables((cloudTables) => {
-      setTables(cloudTables || []);
-    });
-
+    // Lightweight live subscribers for users, logs, and shop settings
     const unsubUsers = subscribeToUsers((cloudUsers) => {
       if (cloudUsers && cloudUsers.length > 0) {
         setUsers(cloudUsers);
+        setCachedData(LOCAL_STORAGE_KEYS.USERS, cloudUsers);
       }
     });
 
@@ -266,15 +303,11 @@ export default function App() {
     const unsubSettings = subscribeToSettings((cloudSettings) => {
       if (cloudSettings) {
         setSettings(cloudSettings);
+        setCachedData(LOCAL_STORAGE_KEYS.SETTINGS, cloudSettings);
       }
     });
 
     return () => {
-      unsubProducts();
-      unsubOrders();
-      unsubExpenses();
-      unsubCustomers();
-      unsubTables();
       unsubUsers();
       unsubLogs();
       unsubSettings();
@@ -291,8 +324,8 @@ export default function App() {
     }
   }, [language]);
 
-  // Auth login handler
-  const handleLoginSuccess = (user: User) => {
+  // Auth login handler: fetches latest dataset from Cloud and caches in Local Storage
+  const handleLoginSuccess = async (user: User) => {
     setCurrentUser(user);
     setCashierName(user.fullName);
     localStorage.setItem('minipos_auth_user', JSON.stringify(user));
@@ -301,6 +334,32 @@ export default function App() {
     setOrderNote('');
     setCustomerName('');
     setActiveView('pos');
+
+    try {
+      const cloudData = await fetchAllCloudData();
+      if (cloudData) {
+        if (cloudData.products && cloudData.products.length > 0) setProducts(cloudData.products);
+        if (cloudData.orders && cloudData.orders.length > 0) setOrders(cloudData.orders);
+        if (cloudData.expenses && cloudData.expenses.length > 0) setExpenses(cloudData.expenses);
+        if (cloudData.customers && cloudData.customers.length > 0) setCustomers(cloudData.customers);
+        if (cloudData.tables && cloudData.tables.length > 0) setTables(cloudData.tables);
+        if (cloudData.users && cloudData.users.length > 0) setUsers(cloudData.users);
+        if (cloudData.settings) setSettings(cloudData.settings);
+      }
+      if (isSyncDue(3)) {
+        await syncAllLocalDataToFirestore({
+          products: cloudData?.products || products,
+          orders: cloudData?.orders || orders,
+          expenses: cloudData?.expenses || expenses,
+          customers: cloudData?.customers || customers,
+          tables: cloudData?.tables || tables,
+          users: cloudData?.users || users,
+          settings: cloudData?.settings || settings
+        });
+      }
+    } catch (err) {
+      console.warn('Post-login cloud fetch skipped:', err);
+    }
   };
 
   // Auth logout handler
@@ -554,15 +613,22 @@ export default function App() {
     alert(language === 'kh' ? 'ការកុម្ម៉ង់ត្រូវបានរក្សាទុកក្នុងសេចក្តីព្រាង (Draft)!' : 'Order saved as draft!');
   };
 
-  // Product CRUD with Cloud Sync
+  // Product CRUD with Local-First Caching & Pending Sync Tracking
   const handleAddProduct = async (newProd: Product) => {
     const prodWithUser: Product = {
       ...newProd,
       userId: currentUser?.id || 'user-admin',
       createdAt: newProd.createdAt || new Date().toISOString()
     };
-    await saveProductToFirestore(prodWithUser);
     
+    // Update state and localStorage immediately
+    setProducts(prev => {
+      const updated = [prodWithUser, ...prev.filter(p => p.id !== prodWithUser.id)];
+      setCachedData(LOCAL_STORAGE_KEYS.PRODUCTS, updated);
+      return updated;
+    });
+    incrementPendingChanges();
+
     addNotification({
       title: language === 'kh' ? `✨ បានបន្ថែមទំនិញ៖ ${prodWithUser.name}` : `✨ Product Added: ${prodWithUser.name}`,
       desc: language === 'kh' 
@@ -574,7 +640,7 @@ export default function App() {
     });
 
     if (currentUser) {
-      await logUserActivity(currentUser.id, currentUser.username, currentUser.role, 'ADD_PRODUCT', `Added product "${prodWithUser.name}"`);
+      logUserActivity(currentUser.id, currentUser.username, currentUser.role, 'ADD_PRODUCT', `Added product "${prodWithUser.name}"`).catch(() => {});
     }
   };
 
@@ -583,27 +649,49 @@ export default function App() {
       ...updated,
       userId: updated.userId || currentUser?.id || 'user-admin'
     };
-    await saveProductToFirestore(prodWithUser);
+
+    // Update state and localStorage immediately
+    setProducts(prev => {
+      const next = prev.map(p => p.id === prodWithUser.id ? prodWithUser : p);
+      setCachedData(LOCAL_STORAGE_KEYS.PRODUCTS, next);
+      return next;
+    });
+    incrementPendingChanges();
+
     if (currentUser) {
-      await logUserActivity(currentUser.id, currentUser.username, currentUser.role, 'UPDATE_PRODUCT', `Updated product "${prodWithUser.name}"`);
+      logUserActivity(currentUser.id, currentUser.username, currentUser.role, 'UPDATE_PRODUCT', `Updated product "${prodWithUser.name}"`).catch(() => {});
     }
   };
 
   const handleDeleteProduct = async (productId: string) => {
     const target = products.find(p => p.id === productId);
-    await deleteProductFromFirestore(productId);
+    
+    // Update state and localStorage immediately
+    setProducts(prev => {
+      const next = prev.filter(p => p.id !== productId);
+      setCachedData(LOCAL_STORAGE_KEYS.PRODUCTS, next);
+      return next;
+    });
+    incrementPendingChanges();
+
     if (currentUser && target) {
-      await logUserActivity(currentUser.id, currentUser.username, currentUser.role, 'DELETE_PRODUCT', `Deleted product "${target.name}"`);
+      logUserActivity(currentUser.id, currentUser.username, currentUser.role, 'DELETE_PRODUCT', `Deleted product "${target.name}"`).catch(() => {});
     }
   };
 
-  // Expense CRUD with Firestore Sync
+  // Expense CRUD with Local-First Caching
   const handleAddExpense = async (expense: Expense) => {
     const expWithUser: Expense = {
       ...expense,
       userId: currentUser?.id || 'user-admin'
     };
-    await saveExpenseToFirestore(expWithUser);
+
+    setExpenses(prev => {
+      const next = [expWithUser, ...prev];
+      setCachedData(LOCAL_STORAGE_KEYS.EXPENSES, next);
+      return next;
+    });
+    incrementPendingChanges();
     
     addNotification({
       title: language === 'kh' ? `💸 ចំណាយថ្មី៖ ${expense.title}` : `💸 New Expense: ${expense.title}`,
@@ -616,42 +704,67 @@ export default function App() {
     });
 
     if (currentUser) {
-      await logUserActivity(currentUser.id, currentUser.username, currentUser.role, 'ADD_EXPENSE', `Logged expense "${expense.title}" of ${expense.amount}`);
+      logUserActivity(currentUser.id, currentUser.username, currentUser.role, 'ADD_EXPENSE', `Logged expense "${expense.title}" of ${expense.amount}`).catch(() => {});
     }
   };
 
   const handleDeleteExpense = async (expenseId: string) => {
-    await deleteExpenseFromFirestore(expenseId);
+    setExpenses(prev => {
+      const next = prev.filter(e => e.id !== expenseId);
+      setCachedData(LOCAL_STORAGE_KEYS.EXPENSES, next);
+      return next;
+    });
+    incrementPendingChanges();
   };
 
-  // Customer CRUD with Firestore Sync
+  // Customer CRUD with Local-First Caching
   const handleAddCustomer = async (customer: Customer) => {
     const custWithUser: Customer = {
       ...customer,
       userId: currentUser?.id || 'user-admin'
     };
-    await saveCustomerToFirestore(custWithUser);
+
+    setCustomers(prev => {
+      const next = [custWithUser, ...prev.filter(c => c.id !== custWithUser.id)];
+      setCachedData(LOCAL_STORAGE_KEYS.CUSTOMERS, next);
+      return next;
+    });
+    incrementPendingChanges();
+
     if (currentUser) {
-      await logUserActivity(currentUser.id, currentUser.username, currentUser.role, 'ADD_CUSTOMER', `Registered customer "${customer.name}"`);
+      logUserActivity(currentUser.id, currentUser.username, currentUser.role, 'ADD_CUSTOMER', `Registered customer "${customer.name}"`).catch(() => {});
     }
   };
 
-  // Order Status update (e.g. Mark Draft as Completed)
+  // Order Status update
   const handleUpdateOrderStatus = async (orderId: string, status: Order['status']) => {
-    await updateOrderStatusInFirestore(orderId, status);
+    setOrders(prev => {
+      const next = prev.map(o => o.id === orderId ? { ...o, status } : o);
+      setCachedData(LOCAL_STORAGE_KEYS.ORDERS, next);
+      return next;
+    });
+    incrementPendingChanges();
+    updateOrderStatusInFirestore(orderId, status).catch(() => {});
   };
 
   const handleDeleteOrder = async (orderId: string) => {
-    await deleteOrderFromFirestore(orderId);
+    setOrders(prev => {
+      const next = prev.filter(o => o.id !== orderId);
+      setCachedData(LOCAL_STORAGE_KEYS.ORDERS, next);
+      return next;
+    });
+    incrementPendingChanges();
+    deleteOrderFromFirestore(orderId).catch(() => {});
   };
 
   // Table Status
   const handleUpdateTableStatus = async (tableId: string, status: TableInfo['status']) => {
-    const t = tables.find(item => item.id === tableId);
-    if (t) {
-      const updated = { ...t, status };
-      await saveTableToFirestore(updated);
-    }
+    setTables(prev => {
+      const next = prev.map(t => t.id === tableId ? { ...t, status } : t);
+      setCachedData(LOCAL_STORAGE_KEYS.TABLES, next);
+      return next;
+    });
+    incrementPendingChanges();
   };
 
   const handleSelectTableForPOS = (tableName: string) => {
@@ -659,27 +772,58 @@ export default function App() {
     setActiveView('pos');
   };
 
-  // Settings update with Firestore sync
+  // Settings update with Local-First Caching
   const handleUpdateSettings = async (newSettings: ShopSettings) => {
     setSettings(newSettings);
-    await saveSettingsToFirestore(newSettings);
+    setCachedData(LOCAL_STORAGE_KEYS.SETTINGS, newSettings);
+    incrementPendingChanges();
+    saveSettingsToFirestore(newSettings).catch(() => {});
   };
 
   // Reset to initial demo data
   const handleResetData = async () => {
-    for (const p of INITIAL_PRODUCTS) {
-      await saveProductToFirestore({ ...p, userId: currentUser?.id || 'user-admin' });
+    setProducts(INITIAL_PRODUCTS);
+    setOrders(INITIAL_ORDERS);
+    setExpenses(INITIAL_EXPENSES);
+    setCustomers(INITIAL_CUSTOMERS);
+    setTables(INITIAL_TABLES);
+    setSettings(INITIAL_SETTINGS);
+
+    setCachedData(LOCAL_STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS);
+    setCachedData(LOCAL_STORAGE_KEYS.ORDERS, INITIAL_ORDERS);
+    setCachedData(LOCAL_STORAGE_KEYS.EXPENSES, INITIAL_EXPENSES);
+    setCachedData(LOCAL_STORAGE_KEYS.CUSTOMERS, INITIAL_CUSTOMERS);
+    setCachedData(LOCAL_STORAGE_KEYS.TABLES, INITIAL_TABLES);
+    setCachedData(LOCAL_STORAGE_KEYS.SETTINGS, INITIAL_SETTINGS);
+
+    incrementPendingChanges();
+  };
+
+  // Cloud Sync handlers for Admin Console
+  const handleSyncAllToCloud = async () => {
+    const res = await syncAllLocalDataToFirestore({
+      products,
+      orders,
+      expenses,
+      customers,
+      tables,
+      users,
+      settings
+    });
+    return res;
+  };
+
+  const handleFetchLatestFromCloud = async () => {
+    const cloudData = await fetchAllCloudData();
+    if (cloudData) {
+      if (cloudData.products && cloudData.products.length > 0) setProducts(cloudData.products);
+      if (cloudData.orders && cloudData.orders.length > 0) setOrders(cloudData.orders);
+      if (cloudData.expenses && cloudData.expenses.length > 0) setExpenses(cloudData.expenses);
+      if (cloudData.customers && cloudData.customers.length > 0) setCustomers(cloudData.customers);
+      if (cloudData.tables && cloudData.tables.length > 0) setTables(cloudData.tables);
+      if (cloudData.users && cloudData.users.length > 0) setUsers(cloudData.users);
+      if (cloudData.settings) setSettings(cloudData.settings);
     }
-    for (const o of INITIAL_ORDERS) {
-      await saveOrderToFirestore({ ...o, userId: currentUser?.id || 'user-admin' });
-    }
-    for (const e of INITIAL_EXPENSES) {
-      await saveExpenseToFirestore({ ...e, userId: currentUser?.id || 'user-admin' });
-    }
-    for (const c of INITIAL_CUSTOMERS) {
-      await saveCustomerToFirestore({ ...c, userId: currentUser?.id || 'user-admin' });
-    }
-    await saveSettingsToFirestore(INITIAL_SETTINGS);
   };
 
   // Calculate pending online orders strictly for current user
@@ -761,6 +905,14 @@ export default function App() {
           onNavigateToPos={() => setActiveView('pos')}
           onLogout={handleLogout}
           onUpdateCurrentUser={handleUpdateCurrentUser}
+          products={products}
+          orders={orders}
+          expenses={expenses}
+          customers={customers}
+          tables={tables}
+          settings={settings}
+          onSyncAllToCloud={handleSyncAllToCloud}
+          onFetchLatestFromCloud={handleFetchLatestFromCloud}
         />
         {isProfileModalOpen && (
           <UserProfileModal

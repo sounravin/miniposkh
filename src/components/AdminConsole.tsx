@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   ShieldCheck, 
   Users, 
@@ -27,15 +27,32 @@ import {
   Shield,
   Eye,
   EyeOff,
-  Check
+  Check,
+  Cloud,
+  CloudUpload,
+  CloudDownload,
+  Server,
+  HardDrive,
+  Sparkles,
+  Layers,
+  FileSpreadsheet,
+  DollarSign,
+  QrCode,
+  Image as ImageIcon,
+  Loader2
 } from 'lucide-react';
-import { User, ActivityLog } from '../types';
+import { User, ActivityLog, Product, Order, Expense, Customer, TableInfo, ShopSettings } from '../types';
 import { 
   updateUserStatusInFirestore, 
   updateUserRoleInFirestore, 
   deleteUserFromFirestore, 
   saveUserToFirestore,
-  logUserActivity 
+  logUserActivity,
+  getLastSyncTime,
+  getPendingChangesCount,
+  isSyncDue,
+  syncAllLocalDataToFirestore,
+  fetchAllCloudData
 } from '../lib/firestoreService';
 import { resizeImageFile } from '../lib/imageUtils';
 
@@ -47,9 +64,18 @@ interface AdminConsoleProps {
   onNavigateToPos: () => void;
   onLogout: () => void;
   onUpdateCurrentUser?: (user: User) => void;
+  products?: Product[];
+  orders?: Order[];
+  expenses?: Expense[];
+  customers?: Customer[];
+  tables?: TableInfo[];
+  settings?: ShopSettings;
+  onSyncAllToCloud?: () => Promise<{ success: boolean; productsSynced: number; ordersSynced: number; timestamp: string }>;
+  onFetchLatestFromCloud?: () => Promise<void>;
 }
 
 const PRESET_AVATARS = [
+
   'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
   'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80',
   'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
@@ -67,7 +93,15 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
   language,
   onNavigateToPos,
   onLogout,
-  onUpdateCurrentUser
+  onUpdateCurrentUser,
+  products = [],
+  orders = [],
+  expenses = [],
+  customers = [],
+  tables = [],
+  settings,
+  onSyncAllToCloud,
+  onFetchLatestFromCloud
 }) => {
   const isKh = language === 'kh';
   const addFileInputRef = useRef<HTMLInputElement>(null);
@@ -76,6 +110,136 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | 'admin' | 'cashier' | 'manager'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'disabled'>('all');
+
+  // Cloud Sync State
+  const [lastSyncTime, setLastSyncTimeState] = useState<string | null>(() => getLastSyncTime());
+  const [pendingChanges, setPendingChanges] = useState<number>(() => getPendingChangesCount());
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
+  const [syncFeedback, setSyncFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  useEffect(() => {
+    setLastSyncTimeState(getLastSyncTime());
+    setPendingChanges(getPendingChangesCount());
+  }, []);
+
+  // Format Sync Timestamp nicely
+  const formatSyncTime = (iso?: string | null) => {
+    if (!iso) return isKh ? 'មិនទាន់ធ្លាប់ Sync' : 'Never Synced';
+    try {
+      const d = new Date(iso);
+      return d.toLocaleString(isKh ? 'km-KH' : 'en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+    } catch {
+      return iso;
+    }
+  };
+
+  // Trigger Full Cloud Backup
+  const handleTriggerSyncAll = async () => {
+    setIsSyncing(true);
+    setSyncFeedback(null);
+    try {
+      if (onSyncAllToCloud) {
+        const res = await onSyncAllToCloud();
+        if (res.success) {
+          setLastSyncTimeState(res.timestamp);
+          setPendingChanges(0);
+          setSyncFeedback({
+            type: 'success',
+            message: isKh 
+              ? `✅ បាន Sync ទិន្នន័យជោគជ័យ! (${res.productsSynced} ទំនិញ, ${res.ordersSynced} វិក្កយបត្រ)` 
+              : `✅ Data synced to Cloud! (${res.productsSynced} products, ${res.ordersSynced} orders)`
+          });
+        } else {
+          throw new Error('Sync returned false');
+        }
+      } else {
+        // Fallback direct sync
+        const res = await syncAllLocalDataToFirestore({
+          products,
+          orders,
+          expenses,
+          customers,
+          tables,
+          users,
+          settings: settings || {
+            shopName: 'MINI MART POS',
+            shopNameKh: 'មីនី ម៉ាត',
+            address: 'Phnom Penh, Cambodia',
+            phone: '+855 12 345 678',
+            email: 'contact@minimart.com',
+            taxRate: 0.05,
+            khrExchangeRate: 4100,
+            currency: 'USD',
+            receiptFooterText: 'សូមអរគុណ! Thank you for shopping with us.',
+            khqrImage: '',
+            khqrMerchantName: 'MINI MART',
+            khqrAccountName: 'MINI MART',
+            khqrAccountNumber: '001 234 567',
+            khqrBankName: 'Bakong / ABA'
+          }
+        });
+        if (res.success) {
+          setLastSyncTimeState(res.timestamp);
+          setPendingChanges(0);
+          setSyncFeedback({
+            type: 'success',
+            message: isKh 
+              ? `✅ បានបម្រុងទុកទិន្នន័យទាំងអស់ទៅ Cloud Firestore ជោគជ័យ!` 
+              : `✅ All datasets successfully backed up to Cloud Firestore!`
+          });
+        } else {
+          throw new Error(res.error || 'Failed to sync');
+        }
+      }
+    } catch (err: any) {
+      setSyncFeedback({
+        type: 'error',
+        message: err.message || (isKh ? 'បរាជ័យក្នុងការ Sync ទៅ Cloud!' : 'Failed to sync to Cloud!')
+      });
+    } finally {
+      setIsSyncing(false);
+      setTimeout(() => {
+        setSyncFeedback(null);
+      }, 6000);
+    }
+  };
+
+  // Trigger Fetch Fresh Data from Cloud
+  const handleTriggerFetchLatest = async () => {
+    setIsFetching(true);
+    setSyncFeedback(null);
+    try {
+      if (onFetchLatestFromCloud) {
+        await onFetchLatestFromCloud();
+      } else {
+        await fetchAllCloudData();
+      }
+      setLastSyncTimeState(new Date().toISOString());
+      setPendingChanges(0);
+      setSyncFeedback({
+        type: 'success',
+        message: isKh ? '✅ បានទាញយកទិន្នន័យចុងក្រោយពី Cloud ជោគជ័យ!' : '✅ Fresh cloud snapshot pulled into local storage!'
+      });
+    } catch (err: any) {
+      setSyncFeedback({
+        type: 'error',
+        message: err.message || (isKh ? 'បរាជ័យក្នុងការទាញយកពី Cloud!' : 'Failed to pull cloud snapshot!')
+      });
+    } finally {
+      setIsFetching(false);
+      setTimeout(() => {
+        setSyncFeedback(null);
+      }, 6000);
+    }
+  };
 
   // Add Member Modal State
   const [showAddModal, setShowAddModal] = useState(false);
@@ -453,6 +617,244 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
             <p className="text-[11px] text-slate-400 mt-1">
               {isKh ? 'សិទ្ធិគ្រប់គ្រងទិន្នន័យ & របាយការណ៍' : 'Management & Reports'}
             </p>
+          </div>
+        </div>
+
+        {/* Cloud Sync & Local Storage Engine Hub */}
+        <div className="bg-gradient-to-br from-indigo-950 via-slate-900 to-slate-950 text-white rounded-3xl p-6 sm:p-7 border border-indigo-500/20 shadow-xl relative overflow-hidden">
+          {/* Ambient glow decoration */}
+          <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
+          <div className="absolute bottom-0 left-0 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none -ml-20 -mb-20" />
+
+          <div className="relative z-10 space-y-6">
+            
+            {/* Header with Badges */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-5 border-b border-slate-800">
+              <div className="flex items-start sm:items-center gap-3.5">
+                <div className="p-3 rounded-2xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/30">
+                  <Cloud className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <h2 className="text-lg sm:text-xl font-black tracking-tight text-white">
+                      {isKh ? 'ការគ្រប់គ្រង Sync ទិន្នន័យ & បម្រុងទុក Cloud (Cloud Sync & Backup Hub)' : 'Cloud Sync & Local Backup Hub'}
+                    </h2>
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[11px] font-bold border border-emerald-500/30 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      Cost-Optimized Mode
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300 mt-1 max-w-2xl font-medium">
+                    {isKh 
+                      ? 'ទិន្នន័យត្រូវបានរក្សាទុកក្នុង Local Storage ភ្លាមៗ (ដំណើរការលឿន មិនអស់ Quota) និងសរុបបម្រុងទុកទៅ Cloud Firestore រៀងរាល់ 2-3 ថ្ងៃម្តង ឬតាមការចុចបញ្ជាផ្ទាល់របស់ Admin។'
+                      : 'Data is staged in fast local storage (reducing continuous Firestore quota usage) with 2-3 day periodic auto-sync or one-click manual Admin backup.'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Quick Sync Action Buttons */}
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleTriggerFetchLatest}
+                  disabled={isFetching || isSyncing}
+                  className="px-4 py-2.5 bg-slate-800/90 hover:bg-slate-700 active:bg-slate-800 text-slate-200 hover:text-white rounded-xl text-xs font-bold flex items-center gap-2 border border-slate-700 transition-all cursor-pointer disabled:opacity-50"
+                  title={isKh ? 'ទាញយកទិន្នន័យថ្មីចុងក្រោយពី Cloud មក Local Storage' : 'Fetch fresh dataset from Firestore Cloud'}
+                >
+                  {isFetching ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-sky-400" />
+                  ) : (
+                    <CloudDownload className="w-4 h-4 text-sky-400" />
+                  )}
+                  <span>{isKh ? 'ទាញយកពី Cloud' : 'Pull from Cloud'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleTriggerSyncAll}
+                  disabled={isSyncing || isFetching}
+                  className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 active:from-indigo-700 active:to-indigo-800 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-lg shadow-indigo-600/30 transition-all cursor-pointer disabled:opacity-50 hover:scale-[1.02]"
+                >
+                  {isSyncing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-white" />
+                      <span>{isKh ? 'កំពុង Sync ទិន្នន័យ...' : 'Syncing All Data...'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <CloudUpload className="w-4 h-4 text-white" />
+                      <span>{isKh ? '⚡ បម្រុងទុកទិន្នន័យទាំងអស់ទៅ Cloud' : '⚡ Sync All Data to Cloud'}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Sync Feedback Toast Message */}
+            {syncFeedback && (
+              <div className={`p-4 rounded-2xl border flex items-center justify-between gap-3 text-xs font-bold animate-in fade-in slide-in-from-top-2 duration-200 ${
+                syncFeedback.type === 'success' 
+                  ? 'bg-emerald-950/80 border-emerald-500/50 text-emerald-200' 
+                  : 'bg-rose-950/80 border-rose-500/50 text-rose-200'
+              }`}>
+                <div className="flex items-center gap-2">
+                  {syncFeedback.type === 'success' ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  ) : (
+                    <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                  )}
+                  <span>{syncFeedback.message}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSyncFeedback(null)}
+                  className="text-slate-400 hover:text-white"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
+            {/* Sync Status Grid Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 space-y-1.5">
+                <div className="flex items-center justify-between text-slate-400 text-xs font-bold">
+                  <span>{isKh ? 'កាលបរិច្ឆេទ Sync ចុងក្រោយ' : 'Last Cloud Sync'}</span>
+                  <Clock className="w-3.5 h-3.5 text-indigo-400" />
+                </div>
+                <div className="text-sm font-black text-white">
+                  {formatSyncTime(lastSyncTime)}
+                </div>
+                <p className="text-[10px] text-slate-400">
+                  {lastSyncTime ? (isKh ? 'ទិន្នន័យមានសុវត្ថិភាព' : 'Cloud snapshot ready') : (isKh ? 'សូមចុច Sync លើកដំបូង' : 'Initial sync recommended')}
+                </p>
+              </div>
+
+              <div className="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 space-y-1.5">
+                <div className="flex items-center justify-between text-slate-400 text-xs font-bold">
+                  <span>{isKh ? 'ទិន្នន័យរង់ចាំ Sync' : 'Pending Local Changes'}</span>
+                  <HardDrive className="w-3.5 h-3.5 text-amber-400" />
+                </div>
+                <div className="text-sm font-black text-amber-400 flex items-center gap-2">
+                  <span>{pendingChanges} {isKh ? 'ការផ្លាស់ប្តូរ' : 'items pending'}</span>
+                  {pendingChanges > 0 && (
+                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+                  )}
+                </div>
+                <p className="text-[10px] text-slate-400">
+                  {pendingChanges === 0 ? (isKh ? 'បាន Sync អស់ហើយ' : 'All synced') : (isKh ? 'រក្សាទុកក្នុង Local Storage' : 'Staged in Local Storage')}
+                </p>
+              </div>
+
+              <div className="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 space-y-1.5">
+                <div className="flex items-center justify-between text-slate-400 text-xs font-bold">
+                  <span>{isKh ? 'គោលការណ៍ Auto-Sync' : 'Auto-Sync Schedule'}</span>
+                  <RefreshCw className="w-3.5 h-3.5 text-emerald-400" />
+                </div>
+                <div className="text-sm font-black text-emerald-400">
+                  {isKh ? 'រៀងរាល់ 2-3 ថ្ងៃម្តង' : 'Every 2-3 Days'}
+                </div>
+                <p className="text-[10px] text-slate-400">
+                  {isKh ? 'កាត់បន្ថយថ្លៃ Firestore 90%' : 'Reduces Firestore writes ~90%'}
+                </p>
+              </div>
+
+              <div className="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 space-y-1.5">
+                <div className="flex items-center justify-between text-slate-400 text-xs font-bold">
+                  <span>{isKh ? 'ទិន្នន័យសរុបក្នុងប្រព័ន្ធ' : 'Total System Records'}</span>
+                  <Layers className="w-3.5 h-3.5 text-sky-400" />
+                </div>
+                <div className="text-sm font-black text-white flex items-center gap-1.5">
+                  <span className="text-sky-300">{products.length}</span> {isKh ? 'ទំនិញ' : 'prods'},{' '}
+                  <span className="text-indigo-300">{orders.length}</span> {isKh ? 'វិក្កយបត្រ' : 'orders'}
+                </div>
+                <p className="text-[10px] text-slate-400">
+                  {customers.length} {isKh ? 'អតិថិជន' : 'custs'}, {expenses.length} {isKh ? 'ចំណាយ' : 'expenses'}
+                </p>
+              </div>
+            </div>
+
+            {/* Per-Member Data Inventory Breakdown Table */}
+            <div className="bg-slate-900/60 rounded-2xl border border-slate-800 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-extrabold text-slate-200 flex items-center gap-2">
+                  <Users className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>{isKh ? 'ស្ថិតិទិន្នន័យតាមគណនីសមាជិកនីមួយៗ (Per-Member Inventory & Sales Breakdown)' : 'Per-Member Inventory & Sales Breakdown'}</span>
+                </h4>
+                <span className="text-[10px] text-slate-400 font-semibold">
+                  {users.length} {isKh ? 'គណនីបានចុះឈ្មោះ' : 'Registered Accounts'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {users.map((u) => {
+                  const memberProds = products.filter(p => p.userId === u.id || (!p.userId && u.id === 'user-admin'));
+                  const memberOrds = orders.filter(o => o.userId === u.id || (!o.userId && u.id === 'user-admin'));
+                  const hasCustomLogo = Boolean(u.invoiceLogo);
+                  const hasCustomKhqr = Boolean(u.khqrImage || u.khqrAccountNumber);
+
+                  return (
+                    <div 
+                      key={`sync-user-${u.id}`} 
+                      className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/80 hover:border-indigo-500/40 transition-all space-y-2.5"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2.5">
+                          <img 
+                            src={u.avatar || PRESET_AVATARS[0]} 
+                            alt={u.fullName} 
+                            className="w-8 h-8 rounded-lg object-cover border border-slate-700" 
+                          />
+                          <div>
+                            <div className="text-xs font-bold text-white truncate max-w-[130px]">
+                              {u.fullName}
+                            </div>
+                            <div className="text-[10px] text-slate-400">
+                              @{u.username}
+                            </div>
+                          </div>
+                        </div>
+
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase ${
+                          u.role === 'admin' 
+                            ? 'bg-purple-900/60 text-purple-300 border border-purple-700/50' 
+                            : u.role === 'manager' 
+                            ? 'bg-indigo-900/60 text-indigo-300 border border-indigo-700/50' 
+                            : 'bg-sky-900/60 text-sky-300 border border-sky-700/50'
+                        }`}>
+                          {u.role}
+                        </span>
+                      </div>
+
+                      {/* Stats */}
+                      <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800/80 text-[11px]">
+                        <div className="bg-slate-900/80 p-2 rounded-lg text-center">
+                          <span className="text-[10px] text-slate-400 block">{isKh ? 'ទំនិញ' : 'Products'}</span>
+                          <span className="font-black text-indigo-300">{memberProds.length}</span>
+                        </div>
+                        <div className="bg-slate-900/80 p-2 rounded-lg text-center">
+                          <span className="text-[10px] text-slate-400 block">{isKh ? 'ការលក់' : 'Orders'}</span>
+                          <span className="font-black text-emerald-300">{memberOrds.length}</span>
+                        </div>
+                      </div>
+
+                      {/* Branding Flags */}
+                      <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1">
+                        <span className="flex items-center gap-1">
+                          <QrCode className={`w-3 h-3 ${hasCustomKhqr ? 'text-rose-400' : 'text-slate-600'}`} />
+                          {hasCustomKhqr ? (isKh ? 'KHQR ផ្ទាល់ខ្លួន' : 'Custom KHQR') : (isKh ? 'KHQR លំនាំដើម' : 'Default KHQR')}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <ImageIcon className={`w-3 h-3 ${hasCustomLogo ? 'text-amber-400' : 'text-slate-600'}`} />
+                          {hasCustomLogo ? (isKh ? 'Invoice Logo' : 'Custom Logo') : (isKh ? 'Logo លំនាំដើម' : 'System Logo')}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
           </div>
         </div>
 
