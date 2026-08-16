@@ -1112,6 +1112,8 @@ export default function App() {
         onClose={() => setActiveReceiptOrder(null)}
         settings={settings}
         language={language}
+        currentUser={currentUser}
+        users={users}
       />
     </div>
   );

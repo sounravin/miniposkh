@@ -120,6 +120,13 @@ export interface User {
   khqrAccountName?: string;
   khqrAccountNumber?: string;
   khqrBankName?: string;
+  // Per-user custom Invoice Branding overrides (isolated to each user/member)
+  invoiceLogo?: string; // Custom invoice logo image (base64 or URL)
+  invoiceShopName?: string; // Custom shop name on invoice (e.g. Sok Piseth Cafe)
+  invoiceShopNameKh?: string; // Custom khmer shop name on invoice
+  invoiceAddress?: string; // Custom address on invoice
+  invoicePhone?: string; // Custom phone number on invoice
+  invoiceFooterText?: string; // Custom footer message on invoice
 }
 
 export interface ActivityLog {

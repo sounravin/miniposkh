@@ -415,6 +415,82 @@ export const SettingsManager: React.FC<SettingsManagerProps> = ({
         </div>
       </div>
 
+      {/* Invoice & Receipt Configuration Card with Member Customization Option */}
+      <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-2xs space-y-4">
+        <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+          <div className="flex items-center gap-2">
+            <Image className="w-4 h-4 text-amber-600" />
+            <h4 className="font-bold text-sm text-slate-800">
+              {isKh ? 'ការកំណត់វិក្កយបត្រ & Logo (Invoice & Receipt)' : 'Invoice & Receipt Settings'}
+            </h4>
+          </div>
+          <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+            {isKh ? 'កំណត់តាម Member នីមួយៗបាន' : 'Per-Member Customizable'}
+          </span>
+        </div>
+
+        {/* User Member Custom Invoice Customizer Action Box */}
+        <div className="p-4 bg-gradient-to-r from-amber-50/70 via-orange-50/40 to-slate-50 rounded-2xl border border-amber-200/80 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              {currentUser?.invoiceLogo ? (
+                <div className="p-1.5 bg-white rounded-xl border border-amber-200 shadow-2xs">
+                  <img
+                    src={currentUser.invoiceLogo}
+                    alt="Member Invoice Logo"
+                    className="w-10 h-10 object-contain rounded-lg"
+                  />
+                </div>
+              ) : (
+                <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 shadow-2xs">
+                  <Image className="w-5 h-5" />
+                </div>
+              )}
+              <div>
+                <h5 className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
+                  <span>{isKh ? 'កំណត់ Logo & ឈ្មោះ Invoice ផ្ទាល់ខ្លួនរបស់គណនីនេះ' : 'Member Personal Invoice Branding'}</span>
+                  {currentUser?.invoiceLogo && (
+                    <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded">
+                      Custom Active
+                    </span>
+                  )}
+                </h5>
+                <p className="text-[11px] text-slate-600 mt-0.5">
+                  {isKh 
+                    ? 'អនុញ្ញាតឱ្យ User Member កំណត់ Logo, ឈ្មោះលើវិក្កយបត្រផ្ទាល់ខ្លួន និង Export ជា JPG ដោយមិនផ្លាស់ប្តូរ Logo របស់ប្រព័ន្ធទាំងមូល'
+                    : 'Each user member can set their own custom invoice logo, custom header name, and export receipts as JPG without altering global system branding.'
+                  }
+                </p>
+              </div>
+            </div>
+
+            {onOpenProfileModal && (
+              <button
+                type="button"
+                onClick={onOpenProfileModal}
+                className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shrink-0 flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer"
+              >
+                <Image className="w-3.5 h-3.5" />
+                <span>{isKh ? 'កំណត់ Invoice ផ្ទាល់ខ្លួន' : 'Customize Invoice'}</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Global Receipt Footer */}
+        <div>
+          <label className="text-xs font-semibold text-slate-700 block mb-1">
+            {isKh ? 'សារលំនាំដើមនៅចុងបញ្ចប់វិក្កយបត្រ (Default Receipt Footer Message)' : 'Default Receipt Footer Message'}
+          </label>
+          <input
+            type="text"
+            value={settings.receiptFooterText}
+            onChange={(e) => handleChange('receiptFooterText', e.target.value)}
+            className="w-full text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500"
+          />
+        </div>
+      </div>
+
       {/* Current User Session & Auth Card */}
       {currentUser && (
         <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-2xs space-y-4">

@@ -56,8 +56,9 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const khqrFileInputRef = useRef<HTMLInputElement>(null);
+  const invoiceLogoInputRef = useRef<HTMLInputElement>(null);
 
-  const [activeTab, setActiveTab] = useState<'profile' | 'khqr'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'khqr' | 'invoice'>('profile');
   const [fullName, setFullName] = useState(currentUser.fullName || '');
   const [phone, setPhone] = useState(currentUser.phone || '');
   const [email, setEmail] = useState(currentUser.email || '');
@@ -72,13 +73,23 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   const [khqrAccountNumber, setKhqrAccountNumber] = useState(currentUser.khqrAccountNumber || '');
   const [khqrBankName, setKhqrBankName] = useState(currentUser.khqrBankName || 'ABA Bank');
 
+  // Per-user custom Invoice fields
+  const [invoiceLogo, setInvoiceLogo] = useState(currentUser.invoiceLogo || '');
+  const [invoiceShopName, setInvoiceShopName] = useState(currentUser.invoiceShopName || '');
+  const [invoiceShopNameKh, setInvoiceShopNameKh] = useState(currentUser.invoiceShopNameKh || '');
+  const [invoiceAddress, setInvoiceAddress] = useState(currentUser.invoiceAddress || '');
+  const [invoicePhone, setInvoicePhone] = useState(currentUser.invoicePhone || '');
+  const [invoiceFooterText, setInvoiceFooterText] = useState(currentUser.invoiceFooterText || '');
+
   const [isSaving, setIsSaving] = useState(false);
   const [isProcessingPhoto, setIsProcessingPhoto] = useState(false);
   const [isProcessingKhqr, setIsProcessingKhqr] = useState(false);
+  const [isProcessingInvoiceLogo, setIsProcessingInvoiceLogo] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [isDraggingKhqr, setIsDraggingKhqr] = useState(false);
+  const [isDraggingInvoiceLogo, setIsDraggingInvoiceLogo] = useState(false);
 
   if (!isOpen) return null;
 
@@ -175,6 +186,47 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
     }
   };
 
+  const processInvoiceLogoFile = async (file: File) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setErrorMessage(isKh ? 'សូមជ្រើសរើសប្រភេទឯកសារជារូបភាព!' : 'Please select an image file!');
+      return;
+    }
+    setErrorMessage('');
+    setIsProcessingInvoiceLogo(true);
+
+    try {
+      const result = await resizeImageFile(file, 400, 400, 0.9);
+      setInvoiceLogo(result.dataUrl);
+    } catch (err) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (typeof e.target?.result === 'string') {
+          setInvoiceLogo(e.target.result);
+        }
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      setIsProcessingInvoiceLogo(false);
+    }
+  };
+
+  const handleInvoiceLogoInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processInvoiceLogoFile(file);
+    }
+  };
+
+  const handleInvoiceLogoDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDraggingInvoiceLogo(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      processInvoiceLogoFile(file);
+    }
+  };
+
   // Handle Save
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -199,7 +251,13 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
         khqrMerchantName: khqrMerchantName.trim(),
         khqrAccountName: khqrAccountName.trim(),
         khqrAccountNumber: khqrAccountNumber.trim(),
-        khqrBankName: khqrBankName.trim()
+        khqrBankName: khqrBankName.trim(),
+        invoiceLogo: invoiceLogo.trim(),
+        invoiceShopName: invoiceShopName.trim(),
+        invoiceShopNameKh: invoiceShopNameKh.trim(),
+        invoiceAddress: invoiceAddress.trim(),
+        invoicePhone: invoicePhone.trim(),
+        invoiceFooterText: invoiceFooterText.trim()
       };
 
       // 1. Save to Cloud Firestore
@@ -211,7 +269,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
         currentUser.username,
         currentUser.role,
         'UPDATE_PROFILE',
-        `${currentUser.username} updated profile & KHQR configuration`
+        `${currentUser.username} updated profile, KHQR, and personal invoice branding`
       );
 
       // 3. Update application state & localStorage
@@ -222,7 +280,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
         onUserUpdated(updatedUser);
       }
       
-      setSuccessMessage(isKh ? 'បានកែប្រែព័ត៌មាន Profile & KHQR ជោគជ័យ!' : 'Profile & KHQR settings saved successfully!');
+      setSuccessMessage(isKh ? 'បានកែប្រែព័ត៌មាន Profile, KHQR & Invoice ជោគជ័យ!' : 'Profile, KHQR & Invoice settings saved successfully!');
       
       setTimeout(() => {
         setSuccessMessage('');
@@ -266,27 +324,40 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('profile')}
-            className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-2 px-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
               activeTab === 'profile'
                 ? 'bg-white text-indigo-700 shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             <UserIcon className="w-3.5 h-3.5" />
-            <span>{isKh ? 'ព័ត៌មានទូទៅ' : 'Profile Info'}</span>
+            <span>{isKh ? 'ព័ត៌មានទូទៅ' : 'Profile'}</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('khqr')}
-            className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-2 px-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
               activeTab === 'khqr'
                 ? 'bg-white text-rose-700 shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             <QrCode className="w-3.5 h-3.5 text-rose-600" />
-            <span>{isKh ? 'KHQR ផ្ទាល់ខ្លួន' : 'Personal KHQR'}</span>
+            <span>{isKh ? 'KHQR ផ្ទាល់ខ្លួន' : 'KHQR'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('invoice')}
+            className={`flex-1 py-2 px-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              activeTab === 'invoice'
+                ? 'bg-white text-amber-700 shadow-xs'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <ImageIcon className="w-3.5 h-3.5 text-amber-600" />
+            <span>{isKh ? 'Invoice ផ្ទាល់ខ្លួន' : 'Invoice Logo'}</span>
           </button>
         </div>
 
@@ -498,7 +569,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 </div>
               </div>
             </div>
-          ) : (
+          ) : activeTab === 'khqr' ? (
             /* KHQR Per-User Configuration Tab */
             <div className="space-y-4 animate-in fade-in">
               <div 
@@ -634,6 +705,157 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
                 </div>
               </div>
             </div>
+          ) : (
+            /* Custom Invoice Branding Tab (Per-User) */
+            <div className="space-y-4 animate-in fade-in">
+              <div 
+                onDragOver={(e) => { e.preventDefault(); setIsDraggingInvoiceLogo(true); }}
+                onDragLeave={() => setIsDraggingInvoiceLogo(false)}
+                onDrop={handleInvoiceLogoDrop}
+                className={`p-4 rounded-2xl border transition-all space-y-3 ${
+                  isDraggingInvoiceLogo ? 'bg-amber-50/70 border-amber-300 ring-2 ring-amber-500/20' : 'bg-slate-50/80 border-slate-200/80'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="block text-xs font-extrabold text-slate-800">
+                      {isKh ? 'Logo វិក្កយបត្រផ្ទាល់ខ្លួន (Personal Invoice Logo)' : 'Personal Invoice Logo'}
+                    </label>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      {isKh ? 'កំណត់ Logo លើ Invoice ដោយមិនប៉ះពាល់ Logo របស់ប្រព័ន្ធទាំងមូល' : 'Applies custom logo on receipts generated by this user without altering global system logo'}
+                    </p>
+                  </div>
+                  {isProcessingInvoiceLogo && (
+                    <span className="text-[11px] font-bold text-amber-600 flex items-center gap-1">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      Processing...
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                  <div className="relative shrink-0 p-2 bg-white rounded-2xl border border-slate-200 shadow-sm">
+                    {invoiceLogo ? (
+                      <div className="relative group">
+                        <img 
+                          src={invoiceLogo} 
+                          alt="Invoice Logo" 
+                          className="w-20 h-20 object-contain rounded-xl"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setInvoiceLogo('')}
+                          className="absolute -top-1 -right-1 p-1 bg-rose-600 text-white rounded-full hover:bg-rose-700 shadow-xs cursor-pointer"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="w-20 h-20 bg-slate-100 rounded-xl flex flex-col items-center justify-center text-slate-400 p-2 text-center">
+                        <ImageIcon className="w-7 h-7 mb-1 text-slate-400" />
+                        <span className="text-[9px] font-bold">Use System Logo</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex-1 space-y-2 text-center sm:text-left w-full">
+                    <input
+                      type="file"
+                      ref={invoiceLogoInputRef}
+                      onChange={handleInvoiceLogoInputChange}
+                      accept="image/*"
+                      className="hidden"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => invoiceLogoInputRef.current?.click()}
+                      disabled={isProcessingInvoiceLogo}
+                      className="w-full sm:w-auto px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>{isKh ? 'Upload Logo វិក្កយបត្រផ្ទាល់ខ្លួន' : 'Upload Invoice Logo'}</span>
+                    </button>
+
+                    <p className="text-[11px] text-slate-400">
+                      {isKh ? 'PNG, JPG ឬ WebP (ទំហំសមរម្យ 400x400)' : 'PNG, JPG or WebP (Recommended square format)'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Invoice Text Fields */}
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      {isKh ? 'ឈ្មោះហាងលើ Invoice (English)' : 'Invoice Shop Name (English)'}
+                    </label>
+                    <input
+                      type="text"
+                      value={invoiceShopName}
+                      onChange={(e) => setInvoiceShopName(e.target.value)}
+                      placeholder="e.g. Sok Piseth Cafe & Mart"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-600"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      {isKh ? 'ឈ្មោះហាងលើ Invoice (ភាសាខ្មែរ)' : 'Invoice Shop Name (Khmer)'}
+                    </label>
+                    <input
+                      type="text"
+                      value={invoiceShopNameKh}
+                      onChange={(e) => setInvoiceShopNameKh(e.target.value)}
+                      placeholder="e.g. ហាងកាហ្វេ សុខ ពិសិដ្ឋ"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-600"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      {isKh ? 'អាសយដ្ឋានលើ Invoice' : 'Invoice Address'}
+                    </label>
+                    <input
+                      type="text"
+                      value={invoiceAddress}
+                      onChange={(e) => setInvoiceAddress(e.target.value)}
+                      placeholder="e.g. St. 271, Phnom Penh"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-600"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      {isKh ? 'លេខទូរស័ព្ទលើ Invoice' : 'Invoice Phone Number'}
+                    </label>
+                    <input
+                      type="text"
+                      value={invoicePhone}
+                      onChange={(e) => setInvoicePhone(e.target.value)}
+                      placeholder="+855 12 345 678"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-600"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    {isKh ? 'សារនៅចុងបញ្ចប់វិក្កយបត្រ (Footer Message)' : 'Invoice Footer Message'}
+                  </label>
+                  <input
+                    type="text"
+                    value={invoiceFooterText}
+                    onChange={(e) => setInvoiceFooterText(e.target.value)}
+                    placeholder="e.g. អរគុណសម្រាប់ការគាំទ្រ! សូមអញ្ជើញមកម្តងទៀត"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-600"
+                  />
+                </div>
+              </div>
+            </div>
           )}
 
           {/* Modal Actions */}
@@ -647,7 +869,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={isSaving || isProcessingPhoto || isProcessingKhqr}
+              disabled={isSaving || isProcessingPhoto || isProcessingKhqr || isProcessingInvoiceLogo}
               className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-600/20 transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {isSaving ? (
