@@ -507,18 +507,55 @@ export default function App() {
     handleAddToCart(product);
   };
 
-  // Complete Order & Save to Firestore
+  // Complete Order & Save with Local-First State & Cache
   const handleOrderCompleted = async (newOrder: Order) => {
     const orderWithUser: Order = {
       ...newOrder,
       userId: currentUser?.id || 'user-admin'
     };
     
-    // Save order to Firestore cloud
-    await saveOrderToFirestore(orderWithUser);
+    // 1. Immediately update Orders state & local cache
+    setOrders(prev => {
+      const updated = [orderWithUser, ...prev.filter(o => o.id !== orderWithUser.id)];
+      setCachedData(LOCAL_STORAGE_KEYS.ORDERS, updated);
+      return updated;
+    });
 
-    // If customer was specified, update customer's lifetime stats & points
+    // 2. Immediately decrement product stock in local state & cache
+    setProducts(prev => {
+      const next = prev.map(p => {
+        const item = newOrder.items.find(it => it.product.id === p.id);
+        if (item) {
+          return { ...p, stock: Math.max(0, p.stock - item.quantity) };
+        }
+        return p;
+      });
+      setCachedData(LOCAL_STORAGE_KEYS.PRODUCTS, next);
+      return next;
+    });
+
+    // 3. Increment pending changes count for cloud sync
+    incrementPendingChanges();
+
+    // 4. Update customer lifetime stats & points if customer is provided
     if (orderWithUser.customerName && orderWithUser.customerName !== 'Walk-in Customer' && orderWithUser.customerName !== 'Draft Order') {
+      setCustomers(prev => {
+        const next = prev.map(c => {
+          if (c.name.toLowerCase() === orderWithUser.customerName?.toLowerCase()) {
+            return {
+              ...c,
+              totalOrders: c.totalOrders + 1,
+              totalSpent: c.totalSpent + orderWithUser.total,
+              points: c.points + Math.round(orderWithUser.total),
+              lastVisit: new Date().toISOString().slice(0, 10)
+            };
+          }
+          return c;
+        });
+        setCachedData(LOCAL_STORAGE_KEYS.CUSTOMERS, next);
+        return next;
+      });
+
       const matchedCust = customers.find(c => c.name.toLowerCase() === orderWithUser.customerName?.toLowerCase());
       if (matchedCust) {
         const updatedCust: Customer = {
@@ -528,31 +565,35 @@ export default function App() {
           points: matchedCust.points + Math.round(orderWithUser.total),
           lastVisit: new Date().toISOString().slice(0, 10)
         };
-        await saveCustomerToFirestore(updatedCust);
+        saveCustomerToFirestore(updatedCust).catch(() => {});
       }
     }
 
-    if (currentUser) {
-      await logUserActivity(
-        currentUser.id, 
-        currentUser.username, 
-        currentUser.role, 
-        'COMPLETED_SALE', 
-        `Completed order #${orderWithUser.orderNumber} for $${orderWithUser.total.toFixed(2)}`
-      );
-    }
-    
-    // Decrement stock in state and Firestore
+    // 5. Async cloud saves (non-blocking)
+    saveOrderToFirestore(orderWithUser).catch((err) => {
+      console.warn('Background order save:', err);
+    });
+
     for (const item of newOrder.items) {
       const p = products.find(prod => prod.id === item.product.id);
       if (p) {
         const updatedStock = Math.max(0, p.stock - item.quantity);
         const updatedProduct: Product = { ...p, stock: updatedStock, userId: p.userId || currentUser?.id || 'user-admin' };
-        await saveProductToFirestore(updatedProduct);
+        saveProductToFirestore(updatedProduct).catch(() => {});
       }
     }
 
-    // Complete Order & Save to Firestore
+    if (currentUser) {
+      logUserActivity(
+        currentUser.id, 
+        currentUser.username, 
+        currentUser.role, 
+        'COMPLETED_SALE', 
+        `Completed order #${orderWithUser.orderNumber} for $${orderWithUser.total.toFixed(2)}`
+      ).catch(() => {});
+    }
+
+    // Complete Order UI
     setIsPaymentModalOpen(false);
     setActiveReceiptOrder(orderWithUser);
 
@@ -608,7 +649,14 @@ export default function App() {
       note: orderNote
     };
 
-    await saveOrderToFirestore(draftOrder);
+    setOrders(prev => {
+      const next = [draftOrder, ...prev.filter(o => o.id !== draftOrder.id)];
+      setCachedData(LOCAL_STORAGE_KEYS.ORDERS, next);
+      return next;
+    });
+    incrementPendingChanges();
+    saveOrderToFirestore(draftOrder).catch(() => {});
+
     setCartItems([]);
     alert(language === 'kh' ? 'ការកុម្ម៉ង់ត្រូវបានរក្សាទុកក្នុងសេចក្តីព្រាង (Draft)!' : 'Order saved as draft!');
   };
@@ -1119,6 +1167,7 @@ export default function App() {
               onAddProduct={handleAddProduct}
               onUpdateProduct={handleUpdateProduct}
               onDeleteProduct={handleDeleteProduct}
+              onAddExpense={handleAddExpense}
               language={language}
               khrRate={settings.khrExchangeRate}
             />

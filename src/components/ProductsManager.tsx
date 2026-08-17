@@ -18,7 +18,7 @@ import {
   Sparkles,
   RefreshCw
 } from 'lucide-react';
-import { Product } from '../types';
+import { Product, Expense } from '../types';
 import { INITIAL_CATEGORIES } from '../data/initialData';
 import { formatUSD, formatKHR } from '../utils/currency';
 import { BarcodeLabelModal } from './BarcodeLabelModal';
@@ -30,6 +30,7 @@ interface ProductsManagerProps {
   onAddProduct: (product: Product) => void;
   onUpdateProduct: (product: Product) => void;
   onDeleteProduct: (productId: string) => void;
+  onAddExpense?: (expense: Expense) => void;
   language: 'en' | 'kh';
   khrRate: number;
 }
@@ -39,6 +40,7 @@ export const ProductsManager: React.FC<ProductsManagerProps> = ({
   onAddProduct,
   onUpdateProduct,
   onDeleteProduct,
+  onAddExpense,
   language,
   khrRate
 }) => {
@@ -50,6 +52,7 @@ export const ProductsManager: React.FC<ProductsManagerProps> = ({
   const [barcodeLabelProduct, setBarcodeLabelProduct] = useState<Product | null>(null);
   const [restockProduct, setRestockProduct] = useState<Product | null>(null);
   const [restockAmount, setRestockAmount] = useState<string>('10');
+  const [logStockExpense, setLogStockExpense] = useState<boolean>(true);
   const [isProcessingImage, setIsProcessingImage] = useState(false);
   const [imageSizeKb, setImageSizeKb] = useState<number | null>(null);
 
@@ -150,10 +153,40 @@ export const ProductsManager: React.FC<ProductsManagerProps> = ({
     e.preventDefault();
     if (!restockProduct) return;
     const qty = parseInt(restockAmount, 10) || 0;
+    if (qty === 0) {
+      setRestockProduct(null);
+      return;
+    }
+
+    // 1. Update product stock
     onUpdateProduct({
       ...restockProduct,
       stock: Math.max(0, restockProduct.stock + qty)
     });
+
+    // 2. If adding stock and logStockExpense is enabled, log as expense
+    if (qty > 0 && logStockExpense && onAddExpense) {
+      const unitCost = typeof restockProduct.costPrice === 'number' && !isNaN(restockProduct.costPrice)
+        ? restockProduct.costPrice
+        : (restockProduct.price * 0.45);
+      const totalCost = unitCost * qty;
+
+      if (totalCost > 0) {
+        onAddExpense({
+          id: `exp-${Date.now()}`,
+          userId: restockProduct.userId || 'user-admin',
+          title: language === 'kh' 
+            ? `ទិញស្តុកបន្ថែម: ${restockProduct.name} (+${qty})` 
+            : `Restock Purchase: ${restockProduct.name} (+${qty})`,
+          category: 'Stock Purchase',
+          amount: totalCost,
+          date: new Date().toISOString().slice(0, 10),
+          paidBy: 'Cashier / Admin',
+          note: `Restocked ${qty} units at $${unitCost.toFixed(2)}/unit`
+        });
+      }
+    }
+
     setRestockProduct(null);
   };
 
@@ -660,22 +693,28 @@ export const ProductsManager: React.FC<ProductsManagerProps> = ({
       {/* Restock Adjustment Modal */}
       {restockProduct && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-xs w-full p-5 space-y-4 animate-in fade-in zoom-in-95">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-sm w-full p-5 space-y-4 animate-in fade-in zoom-in-95">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <h4 className="font-bold text-sm text-slate-800">
-                {isKh ? 'បញ្ចូលស្តុកបន្ថែម' : 'Restock Item'}
+              <h4 className="font-bold text-sm text-slate-800 flex items-center gap-1.5">
+                <Package className="w-4 h-4 text-indigo-600" />
+                <span>{isKh ? 'បញ្ចូលស្តុកបន្ថែម (Restock Item)' : 'Restock Item'}</span>
               </h4>
-              <button onClick={() => setRestockProduct(null)} className="text-slate-400 hover:text-slate-600 text-sm">✕</button>
+              <button onClick={() => setRestockProduct(null)} className="text-slate-400 hover:text-slate-600 text-sm cursor-pointer">✕</button>
             </div>
 
-            <div>
+            <div className="p-3 bg-slate-50 rounded-2xl space-y-1">
               <p className="text-xs font-bold text-slate-800">{restockProduct.name}</p>
-              <p className="text-[11px] text-slate-400">Current Stock: {restockProduct.stock} units</p>
+              <div className="flex justify-between text-[11px] text-slate-500">
+                <span>{isKh ? 'ស្តុកបច្ចុប្បន្ន:' : 'Current Stock:'} <strong className="text-slate-800">{restockProduct.stock}</strong></span>
+                <span>{isKh ? 'ថ្លៃដើម/ឯកតា:' : 'Unit Cost:'} <strong className="text-amber-700 font-mono">${(restockProduct.costPrice || (restockProduct.price * 0.45)).toFixed(2)}</strong></span>
+              </div>
             </div>
 
-            <form onSubmit={handleRestockSubmit} className="space-y-3">
+            <form onSubmit={handleRestockSubmit} className="space-y-3.5">
               <div>
-                <label className="text-xs font-medium text-slate-600 block mb-1">Add Quantity (±)</label>
+                <label className="text-xs font-medium text-slate-600 block mb-1">
+                  {isKh ? 'ចំនួនត្រូវបន្ថែម (Add Quantity)' : 'Add Quantity (±)'}
+                </label>
                 <input
                   type="number"
                   value={restockAmount}
@@ -684,19 +723,42 @@ export const ProductsManager: React.FC<ProductsManagerProps> = ({
                 />
               </div>
 
-              <div className="flex gap-2">
+              {parseInt(restockAmount, 10) > 0 && (
+                <div className="p-3 rounded-2xl bg-amber-50/70 border border-amber-200/60 space-y-2">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-amber-800 font-medium">{isKh ? 'តម្លៃទិញចូលសរុប:' : 'Est. Purchase Total:'}</span>
+                    <span className="font-bold font-mono text-amber-900">
+                      ${((parseInt(restockAmount, 10) || 0) * (restockProduct.costPrice || (restockProduct.price * 0.45))).toFixed(2)}
+                    </span>
+                  </div>
+
+                  <label className="flex items-center gap-2 cursor-pointer pt-1 border-t border-amber-200/50">
+                    <input
+                      type="checkbox"
+                      checked={logStockExpense}
+                      onChange={(e) => setLogStockExpense(e.target.checked)}
+                      className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                    />
+                    <span className="text-[11px] font-semibold text-slate-700">
+                      {isKh ? '✅ កត់ត្រាជាចំណាយទិញស្តុក (Log to Expenses)' : 'Log as Stock Purchase Expense'}
+                    </span>
+                  </label>
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-1">
                 <button
                   type="button"
                   onClick={() => setRestockProduct(null)}
-                  className="flex-1 py-2 text-xs font-semibold text-slate-600 bg-slate-100 rounded-xl"
+                  className="flex-1 py-2.5 text-xs font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
                 >
-                  Cancel
+                  {isKh ? 'បោះបង់' : 'Cancel'}
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl"
+                  className="flex-1 py-2.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 rounded-xl shadow-xs transition-colors cursor-pointer"
                 >
-                  Apply Stock
+                  {isKh ? 'យល់ព្រមបញ្ចូលស្តុក' : 'Apply Stock'}
                 </button>
               </div>
             </form>
