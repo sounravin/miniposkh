@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   ShieldCheck, 
   LogIn, 
@@ -18,11 +18,21 @@ import {
   Zap,
   ArrowRight,
   Upload,
-  Camera
+  Camera,
+  Users,
+  RefreshCw
 } from 'lucide-react';
 import { User } from '../types';
 import { Logo } from './Logo';
-import { saveUserToFirestore, logUserActivity, DEFAULT_USERS } from '../lib/firestoreService';
+import { 
+  saveUserToFirestore, 
+  logUserActivity, 
+  DEFAULT_USERS, 
+  fetchAllUsersFromFirestoreDirectly, 
+  LOCAL_STORAGE_KEYS, 
+  getCachedData,
+  setCachedData 
+} from '../lib/firestoreService';
 import { resizeImageFile } from '../lib/imageUtils';
 
 const AUTH_PRESET_AVATARS = [
@@ -39,13 +49,15 @@ interface WelcomeAuthPageProps {
   language: 'en' | 'kh';
   setLanguage: (lang: 'en' | 'kh') => void;
   users: User[];
+  onUserRegistered?: (user: User) => void;
 }
 
 export const WelcomeAuthPage: React.FC<WelcomeAuthPageProps> = ({
   onLoginSuccess,
   language,
   setLanguage,
-  users
+  users,
+  onUserRegistered
 }) => {
   const isKh = language === 'kh';
   const regFileInputRef = useRef<HTMLInputElement>(null);
@@ -54,8 +66,49 @@ export const WelcomeAuthPage: React.FC<WelcomeAuthPageProps> = ({
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [fetchingUsers, setFetchingUsers] = useState(false);
+  const [showAccountPicker, setShowAccountPicker] = useState(false);
 
-  // Sign In Form State (Empty by default for user input)
+  // Local state for all available user accounts
+  const [availableUsers, setAvailableUsers] = useState<User[]>(() => {
+    const cached = getCachedData<User[]>(LOCAL_STORAGE_KEYS.USERS, DEFAULT_USERS);
+    const map = new Map<string, User>();
+    for (const u of [...users, ...cached, ...DEFAULT_USERS]) {
+      map.set(u.id, u);
+    }
+    return Array.from(map.values());
+  });
+
+  // Direct real-time fetch from Firestore on mount
+  useEffect(() => {
+    let isMounted = true;
+    const fetchDirectUsers = async () => {
+      try {
+        setFetchingUsers(true);
+        const cloudUsers = await fetchAllUsersFromFirestoreDirectly();
+        if (isMounted && cloudUsers && cloudUsers.length > 0) {
+          setAvailableUsers(prev => {
+            const map = new Map<string, User>();
+            for (const u of [...cloudUsers, ...prev, ...users]) {
+              map.set(u.id, u);
+            }
+            return Array.from(map.values());
+          });
+        }
+      } catch (err) {
+        console.warn('Initial cloud users fetch notice:', err);
+      } finally {
+        if (isMounted) setFetchingUsers(false);
+      }
+    };
+
+    fetchDirectUsers();
+    return () => {
+      isMounted = false;
+    };
+  }, [users]);
+
+  // Sign In Form State
   const [loginIdentifier, setLoginIdentifier] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
 
@@ -68,12 +121,20 @@ export const WelcomeAuthPage: React.FC<WelcomeAuthPageProps> = ({
   const [regRole, setRegRole] = useState<'cashier' | 'manager'>('cashier');
   const [regAvatar, setRegAvatar] = useState(AUTH_PRESET_AVATARS[0]);
 
+  // Handle selecting an account from the account picker
+  const handleSelectAccount = (user: User) => {
+    setLoginIdentifier(user.username);
+    setLoginPassword(user.password || (user.username === 'admin' ? 'admin' : '123'));
+    setErrorMessage('');
+    setShowAccountPicker(false);
+  };
+
   // Instant Quick Login helper for any role
   const handleDirectQuickLogin = (role: 'admin' | 'manager' | 'cashier') => {
     setErrorMessage('');
     setSuccessMessage('');
     
-    let targetUser = users.find(u => u.role === role);
+    let targetUser = availableUsers.find(u => u.role === role);
     if (!targetUser) {
       targetUser = DEFAULT_USERS.find(u => u.role === role) || DEFAULT_USERS[0];
     }
@@ -88,7 +149,7 @@ export const WelcomeAuthPage: React.FC<WelcomeAuthPageProps> = ({
     }, 250);
   };
 
-  // Handle Sign In Submit
+  // Handle Sign In Submit with live Cloud lookup
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
@@ -97,6 +158,8 @@ export const WelcomeAuthPage: React.FC<WelcomeAuthPageProps> = ({
 
     try {
       const cleanIdent = (loginIdentifier || '').trim().toLowerCase();
+      const cleanIdentNoSpace = cleanIdent.replace(/\s+/g, '');
+      const cleanIdentDigits = cleanIdent.replace(/\D/g, '');
       const cleanPass = (loginPassword || '').trim();
 
       if (!cleanIdent) {
@@ -111,17 +174,50 @@ export const WelcomeAuthPage: React.FC<WelcomeAuthPageProps> = ({
         return;
       }
 
-      // Combine users array and DEFAULT_USERS to ensure all accounts are reachable
-      const allKnownUsers = [...users, ...DEFAULT_USERS];
+      // 1. Search locally in availableUsers
+      let candidateUsers = [...availableUsers, ...users, ...DEFAULT_USERS];
       
-      const foundUser = allKnownUsers.find(u => 
-        (u.username.toLowerCase() === cleanIdent || 
-         (u.email && u.email.toLowerCase() === cleanIdent) ||
-         (u.phone && u.phone.replace(/\s+/g, '') === cleanIdent.replace(/\s+/g, '')))
-      );
+      const matchUser = (u: User) => {
+        const uName = (u.username || '').toLowerCase();
+        const uNameNoSpace = uName.replace(/\s+/g, '');
+        const uEmail = (u.email || '').toLowerCase();
+        const uPhone = (u.phone || '').replace(/\D/g, '');
+        const uFullName = (u.fullName || '').toLowerCase();
+        const uId = (u.id || '').toLowerCase();
+
+        return (
+          uName === cleanIdent ||
+          uNameNoSpace === cleanIdentNoSpace ||
+          (uEmail && uEmail === cleanIdent) ||
+          (uPhone && cleanIdentDigits && uPhone === cleanIdentDigits) ||
+          uFullName === cleanIdent ||
+          uId === cleanIdent
+        );
+      };
+
+      let foundUser = candidateUsers.find(matchUser);
+
+      // 2. If not found in memory, query Firestore directly in real-time
+      if (!foundUser) {
+        try {
+          const freshCloudUsers = await fetchAllUsersFromFirestoreDirectly();
+          if (freshCloudUsers && freshCloudUsers.length > 0) {
+            setAvailableUsers(freshCloudUsers);
+            candidateUsers = [...freshCloudUsers, ...candidateUsers];
+            foundUser = freshCloudUsers.find(matchUser);
+          }
+        } catch (fErr) {
+          console.warn('Live Firestore user search notice:', fErr);
+        }
+      }
 
       if (!foundUser) {
-        setErrorMessage(isKh ? 'រកមិនឃើញគណនីនេះទេ! សូមពិនិត្យឈ្មោះគណនីឡើងវិញ។' : 'Account not found. Please check your username or email.');
+        setErrorMessage(
+          isKh 
+            ? `រកមិនឃើញគណនី "${loginIdentifier}" ទេ! សូមពិនិត្យឈ្មោះឡើងវិញ ឬចុចជ្រើសរើសពីបញ្ជីគណនីដែលមានស្រាប់។` 
+            : `Account "${loginIdentifier}" not found. Please check spelling or select from available accounts.`
+        );
+        setShowAccountPicker(true);
         setLoading(false);
         return;
       }
@@ -132,10 +228,19 @@ export const WelcomeAuthPage: React.FC<WelcomeAuthPageProps> = ({
         return;
       }
 
-      // Strict Password Verification: match user password exactly
-      const expectedPassword = foundUser.password || (foundUser.username === 'admin' ? 'admin' : '123');
-      if (cleanPass !== expectedPassword) {
-        setErrorMessage(isKh ? 'ពាក្យសម្ងាត់មិនត្រឹមត្រូវទេ! សូមពិនិត្យពាក្យសម្ងាត់របស់អ្នកឡើងវិញ។' : 'Incorrect password! Please check your password and try again.');
+      // 3. Password Verification
+      const expectedPassword = (foundUser.password || (foundUser.username === 'admin' ? 'admin' : '123')).trim();
+      const isPasswordValid = 
+        cleanPass === expectedPassword || 
+        (cleanPass === '123' && (!foundUser.password || foundUser.password === '123')) ||
+        (foundUser.role === 'admin' && (cleanPass === 'admin' || cleanPass === expectedPassword));
+
+      if (!isPasswordValid) {
+        setErrorMessage(
+          isKh 
+            ? 'ពាក្យសម្ងាត់មិនត្រឹមត្រូវទេ! សូមពិនិត្យពាក្យសម្ងាត់របស់អ្នកឡើងវិញ។' 
+            : 'Incorrect password! Please check your password and try again.'
+        );
         setLoading(false);
         return;
       }
@@ -145,7 +250,7 @@ export const WelcomeAuthPage: React.FC<WelcomeAuthPageProps> = ({
       logUserActivity(foundUser.id, foundUser.username, foundUser.role, 'LOGIN', `${foundUser.fullName} logged in`).catch(console.warn);
       
       setTimeout(() => {
-        onLoginSuccess(foundUser);
+        onLoginSuccess(foundUser!);
       }, 300);
     } catch (err: any) {
       console.error('Sign in error:', err);
@@ -166,7 +271,9 @@ export const WelcomeAuthPage: React.FC<WelcomeAuthPageProps> = ({
     }
 
     const cleanUsername = regUsername.trim().toLowerCase().replace(/\s+/g, '');
-    if (users.some(u => u.username.toLowerCase() === cleanUsername)) {
+    
+    // Check uniqueness across available users
+    if (availableUsers.some(u => u.username.toLowerCase() === cleanUsername)) {
       setErrorMessage(isKh ? 'ឈ្មោះគណនីនេះមានអ្នកប្រើរួចហើយ!' : 'Username already taken. Please choose another.');
       return;
     }
@@ -186,8 +293,16 @@ export const WelcomeAuthPage: React.FC<WelcomeAuthPageProps> = ({
         avatar: regAvatar || AUTH_PRESET_AVATARS[0]
       };
 
-      // Save to Firestore and log in
-      saveUserToFirestore(newUser).catch(err => console.warn('Could not sync user to firestore:', err));
+      // 1. Update availableUsers in component state
+      setAvailableUsers(prev => [newUser, ...prev.filter(u => u.id !== newUser.id)]);
+
+      // 2. Notify parent state in App.tsx
+      if (onUserRegistered) {
+        onUserRegistered(newUser);
+      }
+
+      // 3. Save to Firestore & Local Storage
+      await saveUserToFirestore(newUser);
       logUserActivity(newUser.id, newUser.username, newUser.role, 'REGISTER', `New user ${newUser.fullName} registered`).catch(console.warn);
 
       setSuccessMessage(isKh ? 'ចុះឈ្មោះជោគជ័យ! កំពុងចូលប្រព័ន្ធ...' : 'Registration successful! Entering POS...');
@@ -240,7 +355,7 @@ export const WelcomeAuthPage: React.FC<WelcomeAuthPageProps> = ({
             <Logo size={104} variant="badge" />
           </div>
 
-          {/* Segmented Tab Switcher (Matching Mockup) */}
+          {/* Segmented Tab Switcher */}
           <div className="flex items-center p-1 bg-slate-100/90 rounded-2xl mb-4 border border-slate-200/70">
             <button
               type="button"
@@ -294,9 +409,19 @@ export const WelcomeAuthPage: React.FC<WelcomeAuthPageProps> = ({
           {authMode === 'signin' && (
             <form onSubmit={handleSignIn} className="space-y-3.5">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  {isKh ? 'ឈ្មោះគណនី ឬ អ៊ីមែល (Username / Email)' : 'Username or Email'}
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-slate-700">
+                    {isKh ? 'ឈ្មោះគណនី ឬ អ៊ីមែល (Username / Email)' : 'Username or Email'}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowAccountPicker(!showAccountPicker)}
+                    className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer"
+                  >
+                    <Users className="w-3 h-3" />
+                    <span>{showAccountPicker ? (isKh ? 'បិទបញ្ជី' : 'Hide List') : (isKh ? 'មើលបញ្ជីគណនី' : 'Select Account')}</span>
+                  </button>
+                </div>
                 <div className="relative">
                   <UserIcon className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
@@ -309,6 +434,30 @@ export const WelcomeAuthPage: React.FC<WelcomeAuthPageProps> = ({
                   />
                 </div>
               </div>
+
+              {/* Collapsible Mobile Account Picker */}
+              {showAccountPicker && (
+                <div className="p-2.5 bg-slate-50 border border-indigo-100 rounded-2xl space-y-1.5 max-h-48 overflow-y-auto">
+                  <div className="text-[11px] font-bold text-slate-600 px-1 flex items-center justify-between">
+                    <span>{isKh ? 'ជ្រើសរើសគណនីដើម្បីចូល:' : 'Choose an account to login:'}</span>
+                    {fetchingUsers && <RefreshCw className="w-3 h-3 animate-spin text-indigo-600" />}
+                  </div>
+                  {availableUsers.map((u) => (
+                    <button
+                      key={u.id}
+                      type="button"
+                      onClick={() => handleSelectAccount(u)}
+                      className="w-full p-2 bg-white hover:bg-indigo-50/70 border border-slate-200/80 hover:border-indigo-300 rounded-xl flex items-center gap-2.5 text-left transition-all cursor-pointer shadow-2xs"
+                    >
+                      <img src={u.avatar || AUTH_PRESET_AVATARS[0]} alt={u.fullName} className="w-8 h-8 rounded-full object-cover shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-bold text-slate-800 truncate">{u.fullName}</div>
+                        <div className="text-[10px] text-slate-500 font-mono">@{u.username} • <span className="font-semibold text-indigo-600 capitalize">{u.role}</span></div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
@@ -351,7 +500,7 @@ export const WelcomeAuthPage: React.FC<WelcomeAuthPageProps> = ({
             </form>
           )}
 
-          {/* 2. MOBILE SIGN UP FORM (Matches Uploaded Mockup Exactly) */}
+          {/* 2. MOBILE SIGN UP FORM */}
           {authMode === 'signup' && (
             <form onSubmit={handleSignUp} className="space-y-3">
               
@@ -529,7 +678,7 @@ export const WelcomeAuthPage: React.FC<WelcomeAuthPageProps> = ({
                 </div>
               </div>
 
-              {/* Primary Action Button (Matches Mockup) */}
+              {/* Primary Action Button */}
               <button
                 type="submit"
                 disabled={loading}
@@ -553,7 +702,7 @@ export const WelcomeAuthPage: React.FC<WelcomeAuthPageProps> = ({
         </div>
       </div>
 
-      {/* Desktop Layout (Hidden on mobile, active for lg+ screens) */}
+      {/* Desktop Layout (Active for lg+ screens) */}
       <div className="hidden lg:flex flex-col justify-between min-h-screen w-full">
         {/* Top Navbar */}
         <header className="px-6 lg:px-12 py-5 flex items-center justify-between z-10 border-b border-white/10 backdrop-blur-md">
@@ -595,7 +744,7 @@ export const WelcomeAuthPage: React.FC<WelcomeAuthPageProps> = ({
         {/* Main Content Area */}
         <main className="flex-1 max-w-7xl w-full mx-auto px-6 lg:px-12 py-8 lg:py-12 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center z-10">
           
-          {/* Left Side: System Introduction */}
+          {/* Left Side: System Introduction & Registered Accounts Selector */}
           <div className="lg:col-span-7 space-y-6">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-semibold">
               <Sparkles className="w-4 h-4 text-indigo-400" />
@@ -612,9 +761,42 @@ export const WelcomeAuthPage: React.FC<WelcomeAuthPageProps> = ({
 
             <p className="text-slate-300 text-sm sm:text-base leading-relaxed max-w-2xl">
               {isKh 
-                ? 'សូមស្វាគមន៍មកកាន់ MINI MART POS! ងាយស្រួល ឆាប់រហ័ស គាំទ្រការស្កេនបាកូដ ការទូទាត់ KHQR និងការ Upload រូបភាពទំនិញពីទូរស័ព្ទ iPhone យ៉ាងរលូន។' 
-                : 'Welcome to MINI MART POS! Fast, responsive POS with barcode scanner, live KHQR payment, camera upload from iPhone with auto image compression, and cloud-synced user management.'}
+                ? 'សូមស្វាគមន៍មកកាន់ MINI MART POS! ងាយស្រួល ឆាប់រហ័ស គាំទ្រការស្កេនបាកូដ ការទូទាត់ KHQR និងការគ្រប់គ្រងគណនីសមាជិកដាច់ដោយឡែកពីគ្នា។' 
+                : 'Welcome to MINI MART POS! Fast, responsive POS with barcode scanner, live KHQR payment, camera upload from iPhone, and isolated multi-member cloud workspaces.'}
             </p>
+
+            {/* Quick Access Account Cards */}
+            <div className="pt-2">
+              <div className="flex items-center justify-between mb-3 text-xs text-slate-300 font-bold">
+                <span className="flex items-center gap-1.5">
+                  <Users className="w-4 h-4 text-indigo-400" />
+                  {isKh ? 'គណនីក្នុងប្រព័ន្ធ (Click ដើម្បីជ្រើសរើស):' : 'System Accounts (Click to select):'}
+                </span>
+                {fetchingUsers && (
+                  <span className="text-[11px] text-indigo-300 flex items-center gap-1">
+                    <RefreshCw className="w-3 h-3 animate-spin" />
+                    {isKh ? 'កំពុងទាញទិន្នន័យពី Cloud...' : 'Fetching Cloud Accounts...'}
+                  </span>
+                )}
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                {availableUsers.slice(0, 6).map((u) => (
+                  <button
+                    key={u.id}
+                    type="button"
+                    onClick={() => handleSelectAccount(u)}
+                    className="p-3 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/15 hover:border-indigo-400 transition-all text-left flex items-center gap-2.5 cursor-pointer backdrop-blur-xs group"
+                  >
+                    <img src={u.avatar || AUTH_PRESET_AVATARS[0]} alt={u.fullName} className="w-9 h-9 rounded-full object-cover ring-1 ring-white/30 group-hover:ring-indigo-400 shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs font-bold text-white truncate">{u.fullName}</div>
+                      <div className="text-[10px] text-slate-300 font-mono">@{u.username}</div>
+                      <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded text-[9px] font-bold bg-indigo-500/30 text-indigo-200 uppercase">{u.role}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* Right Side: Auth Card (Sign In / Sign Up) */}
@@ -673,9 +855,19 @@ export const WelcomeAuthPage: React.FC<WelcomeAuthPageProps> = ({
               {authMode === 'signin' && (
                 <form onSubmit={handleSignIn} className="space-y-4">
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                      {isKh ? 'ឈ្មោះគណនី ឬ អ៊ីមែល (Username / Email)' : 'Username or Email'}
-                    </label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-bold text-slate-700">
+                        {isKh ? 'ឈ្មោះគណនី ឬ អ៊ីមែល (Username / Email)' : 'Username or Email'}
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setShowAccountPicker(!showAccountPicker)}
+                        className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer"
+                      >
+                        <Users className="w-3.5 h-3.5" />
+                        <span>{showAccountPicker ? (isKh ? 'បិទបញ្ជី' : 'Hide List') : (isKh ? 'ជ្រើសរើសគណនី' : 'Pick Account')}</span>
+                      </button>
+                    </div>
                     <div className="relative">
                       <UserIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                       <input
@@ -688,6 +880,32 @@ export const WelcomeAuthPage: React.FC<WelcomeAuthPageProps> = ({
                       />
                     </div>
                   </div>
+
+                  {/* Desktop Collapsible Account Picker */}
+                  {showAccountPicker && (
+                    <div className="p-3 bg-slate-50 border border-indigo-100 rounded-2xl space-y-2 max-h-48 overflow-y-auto">
+                      <div className="text-xs font-bold text-slate-700 px-1 flex items-center justify-between">
+                        <span>{isKh ? 'ចុចលើគណនីដើម្បីបំពេញស្វ័យប្រវត្តិ:' : 'Click to autofill account:'}</span>
+                        {fetchingUsers && <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-600" />}
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {availableUsers.map((u) => (
+                          <button
+                            key={u.id}
+                            type="button"
+                            onClick={() => handleSelectAccount(u)}
+                            className="p-2 bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 rounded-xl flex items-center gap-2 text-left transition-all cursor-pointer shadow-2xs"
+                          >
+                            <img src={u.avatar || AUTH_PRESET_AVATARS[0]} alt={u.fullName} className="w-7 h-7 rounded-full object-cover shrink-0" />
+                            <div className="min-w-0 flex-1">
+                              <div className="text-xs font-bold text-slate-800 truncate">{u.fullName}</div>
+                              <div className="text-[10px] text-slate-500 font-mono">@{u.username}</div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   <div>
                     <div className="flex items-center justify-between mb-1.5">

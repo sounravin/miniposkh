@@ -937,6 +937,9 @@ export default function App() {
         language={language}
         setLanguage={setLanguage}
         users={users}
+        onUserRegistered={(newUser) => {
+          setUsers(prev => [newUser, ...prev.filter(u => u.id !== newUser.id)]);
+        }}
       />
     );
   }

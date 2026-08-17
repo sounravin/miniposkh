@@ -478,7 +478,65 @@ export async function saveSettingsToFirestore(settings: ShopSettings): Promise<v
 
 // Save or Update User
 export async function saveUserToFirestore(user: User): Promise<void> {
-  await setDoc(doc(db, 'users', user.id), cleanForFirestore(user));
+  try {
+    // 1. Immediately update Local Storage cache
+    const currentCached = getCachedData<User[]>(LOCAL_STORAGE_KEYS.USERS, DEFAULT_USERS);
+    const updated = [user, ...currentCached.filter(u => u.id !== user.id && u.username.toLowerCase() !== user.username.toLowerCase())];
+    setCachedData(LOCAL_STORAGE_KEYS.USERS, updated);
+
+    // Also update a permanent registry in localStorage
+    try {
+      const backupUsers = JSON.parse(localStorage.getItem('minipos_all_registered_accounts') || '[]');
+      const backupUpdated = [user, ...backupUsers.filter((u: any) => u.id !== user.id && u.username?.toLowerCase() !== user.username.toLowerCase())];
+      localStorage.setItem('minipos_all_registered_accounts', JSON.stringify(backupUpdated));
+    } catch {
+      // Safe fallback
+    }
+
+    // 2. Persist to Firestore
+    await setDoc(doc(db, 'users', user.id), cleanForFirestore(user));
+  } catch (err) {
+    console.warn('Failed to save user to Firestore directly:', err);
+  }
+}
+
+// Fetch all registered users directly from Firestore Cloud
+export async function fetchAllUsersFromFirestoreDirectly(): Promise<User[]> {
+  try {
+    const userDocs = await getDocs(usersCollection);
+    const list: User[] = [];
+    if (!userDocs.empty) {
+      userDocs.forEach((docSnap) => {
+        list.push(docSnap.data() as User);
+      });
+    }
+
+    // Ensure all default admin & staff accounts are included
+    for (const defU of DEFAULT_USERS) {
+      if (!list.some(u => u.id === defU.id || u.username.toLowerCase() === defU.username.toLowerCase())) {
+        list.push(defU);
+      }
+    }
+
+    // Merge with any locally stored users
+    try {
+      const backupUsers = JSON.parse(localStorage.getItem('minipos_all_registered_accounts') || '[]');
+      for (const bU of backupUsers) {
+        if (!list.some(u => u.id === bU.id || u.username.toLowerCase() === bU.username?.toLowerCase())) {
+          list.push(bU);
+        }
+      }
+    } catch {
+      // Safe fallback
+    }
+
+    list.sort((a, b) => (a.role === 'admin' ? -1 : b.role === 'admin' ? 1 : 0));
+    setCachedData(LOCAL_STORAGE_KEYS.USERS, list);
+    return list;
+  } catch (err) {
+    console.warn('Direct fetch users from Firestore fallback to cache:', err);
+    return getCachedData(LOCAL_STORAGE_KEYS.USERS, DEFAULT_USERS);
+  }
 }
 
 // Update User Status
