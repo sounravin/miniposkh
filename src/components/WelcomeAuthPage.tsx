@@ -409,19 +409,9 @@ export const WelcomeAuthPage: React.FC<WelcomeAuthPageProps> = ({
           {authMode === 'signin' && (
             <form onSubmit={handleSignIn} className="space-y-3.5">
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-bold text-slate-700">
-                    {isKh ? 'ឈ្មោះគណនី ឬ អ៊ីមែល (Username / Email)' : 'Username or Email'}
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setShowAccountPicker(!showAccountPicker)}
-                    className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer"
-                  >
-                    <Users className="w-3 h-3" />
-                    <span>{showAccountPicker ? (isKh ? 'បិទបញ្ជី' : 'Hide List') : (isKh ? 'មើលបញ្ជីគណនី' : 'Select Account')}</span>
-                  </button>
-                </div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  {isKh ? 'ឈ្មោះគណនី ឬ អ៊ីមែល (Username / Email)' : 'Username or Email'}
+                </label>
                 <div className="relative">
                   <UserIcon className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
@@ -434,30 +424,6 @@ export const WelcomeAuthPage: React.FC<WelcomeAuthPageProps> = ({
                   />
                 </div>
               </div>
-
-              {/* Collapsible Mobile Account Picker */}
-              {showAccountPicker && (
-                <div className="p-2.5 bg-slate-50 border border-indigo-100 rounded-2xl space-y-1.5 max-h-48 overflow-y-auto">
-                  <div className="text-[11px] font-bold text-slate-600 px-1 flex items-center justify-between">
-                    <span>{isKh ? 'ជ្រើសរើសគណនីដើម្បីចូល:' : 'Choose an account to login:'}</span>
-                    {fetchingUsers && <RefreshCw className="w-3 h-3 animate-spin text-indigo-600" />}
-                  </div>
-                  {availableUsers.map((u) => (
-                    <button
-                      key={u.id}
-                      type="button"
-                      onClick={() => handleSelectAccount(u)}
-                      className="w-full p-2 bg-white hover:bg-indigo-50/70 border border-slate-200/80 hover:border-indigo-300 rounded-xl flex items-center gap-2.5 text-left transition-all cursor-pointer shadow-2xs"
-                    >
-                      <img src={u.avatar || AUTH_PRESET_AVATARS[0]} alt={u.fullName} className="w-8 h-8 rounded-full object-cover shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs font-bold text-slate-800 truncate">{u.fullName}</div>
-                        <div className="text-[10px] text-slate-500 font-mono">@{u.username} • <span className="font-semibold text-indigo-600 capitalize">{u.role}</span></div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
@@ -765,36 +731,42 @@ export const WelcomeAuthPage: React.FC<WelcomeAuthPageProps> = ({
                 : 'Welcome to MINI MART POS! Fast, responsive POS with barcode scanner, live KHQR payment, camera upload from iPhone, and isolated multi-member cloud workspaces.'}
             </p>
 
-            {/* Quick Access Account Cards */}
-            <div className="pt-2">
-              <div className="flex items-center justify-between mb-3 text-xs text-slate-300 font-bold">
-                <span className="flex items-center gap-1.5">
-                  <Users className="w-4 h-4 text-indigo-400" />
-                  {isKh ? 'គណនីក្នុងប្រព័ន្ធ (Click ដើម្បីជ្រើសរើស):' : 'System Accounts (Click to select):'}
-                </span>
-                {fetchingUsers && (
-                  <span className="text-[11px] text-indigo-300 flex items-center gap-1">
-                    <RefreshCw className="w-3 h-3 animate-spin" />
-                    {isKh ? 'កំពុងទាញទិន្នន័យពី Cloud...' : 'Fetching Cloud Accounts...'}
-                  </span>
-                )}
+            {/* System Key Feature Badges */}
+            <div className="pt-3 grid grid-cols-3 gap-3">
+              <div className="p-3.5 rounded-2xl bg-white/10 border border-white/15 backdrop-blur-xs">
+                <div className="w-8 h-8 rounded-xl bg-indigo-500/30 flex items-center justify-center mb-2 text-indigo-300">
+                  <Cloud className="w-4 h-4" />
+                </div>
+                <div className="text-xs font-bold text-white mb-0.5">
+                  {isKh ? 'Real-Time Cloud' : 'Cloud Sync'}
+                </div>
+                <div className="text-[11px] text-slate-300">
+                  {isKh ? 'Sync ទិន្នន័យលើ Firestore' : 'Live Firestore integration'}
+                </div>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                {availableUsers.slice(0, 6).map((u) => (
-                  <button
-                    key={u.id}
-                    type="button"
-                    onClick={() => handleSelectAccount(u)}
-                    className="p-3 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/15 hover:border-indigo-400 transition-all text-left flex items-center gap-2.5 cursor-pointer backdrop-blur-xs group"
-                  >
-                    <img src={u.avatar || AUTH_PRESET_AVATARS[0]} alt={u.fullName} className="w-9 h-9 rounded-full object-cover ring-1 ring-white/30 group-hover:ring-indigo-400 shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <div className="text-xs font-bold text-white truncate">{u.fullName}</div>
-                      <div className="text-[10px] text-slate-300 font-mono">@{u.username}</div>
-                      <span className="inline-block mt-0.5 px-1.5 py-0.2 rounded text-[9px] font-bold bg-indigo-500/30 text-indigo-200 uppercase">{u.role}</span>
-                    </div>
-                  </button>
-                ))}
+
+              <div className="p-3.5 rounded-2xl bg-white/10 border border-white/15 backdrop-blur-xs">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/30 flex items-center justify-center mb-2 text-emerald-300">
+                  <QrCode className="w-4 h-4" />
+                </div>
+                <div className="text-xs font-bold text-white mb-0.5">
+                  {isKh ? 'ស្កេន KHQR & បាកូដ' : 'KHQR & Barcode'}
+                </div>
+                <div className="text-[11px] text-slate-300">
+                  {isKh ? 'គាំទ្រការទូទាត់រហ័ស' : 'Fast cashier checkout'}
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-white/10 border border-white/15 backdrop-blur-xs">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/30 flex items-center justify-center mb-2 text-amber-300">
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
+                <div className="text-xs font-bold text-white mb-0.5">
+                  {isKh ? 'សុវត្ថិភាពខ្ពស់' : 'Secure Access'}
+                </div>
+                <div className="text-[11px] text-slate-300">
+                  {isKh ? 'គ្រប់គ្រងតាមតួនាទី Role' : 'Role-based permissions'}
+                </div>
               </div>
             </div>
           </div>
@@ -855,19 +827,9 @@ export const WelcomeAuthPage: React.FC<WelcomeAuthPageProps> = ({
               {authMode === 'signin' && (
                 <form onSubmit={handleSignIn} className="space-y-4">
                   <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="block text-xs font-bold text-slate-700">
-                        {isKh ? 'ឈ្មោះគណនី ឬ អ៊ីមែល (Username / Email)' : 'Username or Email'}
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => setShowAccountPicker(!showAccountPicker)}
-                        className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer"
-                      >
-                        <Users className="w-3.5 h-3.5" />
-                        <span>{showAccountPicker ? (isKh ? 'បិទបញ្ជី' : 'Hide List') : (isKh ? 'ជ្រើសរើសគណនី' : 'Pick Account')}</span>
-                      </button>
-                    </div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                      {isKh ? 'ឈ្មោះគណនី ឬ អ៊ីមែល (Username / Email)' : 'Username or Email'}
+                    </label>
                     <div className="relative">
                       <UserIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                       <input
@@ -880,32 +842,6 @@ export const WelcomeAuthPage: React.FC<WelcomeAuthPageProps> = ({
                       />
                     </div>
                   </div>
-
-                  {/* Desktop Collapsible Account Picker */}
-                  {showAccountPicker && (
-                    <div className="p-3 bg-slate-50 border border-indigo-100 rounded-2xl space-y-2 max-h-48 overflow-y-auto">
-                      <div className="text-xs font-bold text-slate-700 px-1 flex items-center justify-between">
-                        <span>{isKh ? 'ចុចលើគណនីដើម្បីបំពេញស្វ័យប្រវត្តិ:' : 'Click to autofill account:'}</span>
-                        {fetchingUsers && <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-600" />}
-                      </div>
-                      <div className="grid grid-cols-2 gap-2">
-                        {availableUsers.map((u) => (
-                          <button
-                            key={u.id}
-                            type="button"
-                            onClick={() => handleSelectAccount(u)}
-                            className="p-2 bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 rounded-xl flex items-center gap-2 text-left transition-all cursor-pointer shadow-2xs"
-                          >
-                            <img src={u.avatar || AUTH_PRESET_AVATARS[0]} alt={u.fullName} className="w-7 h-7 rounded-full object-cover shrink-0" />
-                            <div className="min-w-0 flex-1">
-                              <div className="text-xs font-bold text-slate-800 truncate">{u.fullName}</div>
-                              <div className="text-[10px] text-slate-500 font-mono">@{u.username}</div>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
 
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
